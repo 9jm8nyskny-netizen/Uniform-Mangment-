@@ -947,7 +947,11 @@ function ordersView(){
           ${list.length? list.map(o=>`<tr>
             <td>#${o.code}</td><td>${o.employeeName}</td><td>${o.employeeNumber}</td><td>${o.branch}</td><td>${o.size}</td>
             <td>${fmtDate(o.createdDate)}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${o.status}</span></td><td>${o.price} ريال</td>
-            <td><button class="icon-btn" data-order-detail="${o.id}" title="التفاصيل">↗</button></td>
+            <td style="white-space:nowrap;">
+              <button class="icon-btn" data-order-detail="${o.id}" title="التفاصيل">↗</button>
+              ${canManage ? `<button class="icon-btn" data-order-edit="${o.id}" title="تعديل">✎</button>` : ''}
+              ${canManage ? `<button class="icon-btn" data-order-delete="${o.id}" title="حذف">🗑</button>` : ''}
+            </td>
           </tr>`).join('') : `<tr><td colspan="9" class="empty-row">لا توجد طلبات</td></tr>`}
           </tbody>
         </table>
@@ -962,6 +966,25 @@ function bindOrders(){
   const addBtn = document.getElementById('add-order-btn');
   if(addBtn) addBtn.onclick = ()=> openOrderModal(null);
   document.querySelectorAll('[data-order-detail]').forEach(el=> el.onclick = ()=> openOrderDetailModal(el.dataset.orderDetail));
+  document.querySelectorAll('[data-order-edit]').forEach(el=> el.onclick = ()=> openOrderEditModal(el.dataset.orderEdit));
+  document.querySelectorAll('[data-order-delete]').forEach(el=> el.onclick = ()=> deleteOrder(el.dataset.orderDelete));
+}
+
+function openOrderEditModal(orderId){
+  STATE.modal = {type:'orderEdit', order: STATE.orders.find(o=>o.id===orderId)};
+  render();
+}
+
+function deleteOrder(orderId){
+  const o = STATE.orders.find(x=>x.id===orderId);
+  if(!o) return;
+  if(confirm(`حذف الطلب #${o.code} الخاص بالموظف "${o.employeeName}"؟ لا يمكن التراجع عن هذا الإجراء.`)){
+    STATE.orders = STATE.orders.filter(x=>x.id!==orderId);
+    persist('orders');
+    addAudit('حذف طلب يونيفورم', `#${o.code} — ${o.employeeName}`);
+    toast('تم حذف الطلب');
+    render();
+  }
 }
 
 function openOrderModal(preselectEmpId){
@@ -1104,6 +1127,7 @@ function modalWrap(){
   const m = STATE.modal;
   if(m.type==='employee') return employeeModal(m.emp);
   if(m.type==='order') return orderModal(m);
+  if(m.type==='orderEdit') return orderEditModal(m.order);
   if(m.type==='orderDetail') return orderDetailModal(m.order);
   if(m.type==='user') return userModal(m.editUser);
   return '';
@@ -1258,6 +1282,65 @@ function bindOrderModal(){
     closeModal();
   };
   document.getElementById('cancel-order').onclick = closeModal;
+}
+
+/* ---- Order edit modal (edit an existing order's details) ---- */
+function orderEditModal(o){
+  return `
+  <div class="overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-head"><h3>تعديل الطلب #${o.code}</h3><button class="modal-close" id="modal-close">✕</button></div>
+      <div class="modal-body">
+        <div class="grid-2" style="margin-bottom:14px;">
+          <div class="info-line"><span>الموظف</span><span>${o.employeeName}</span></div>
+          <div class="info-line"><span>الرقم الوظيفي</span><span>${o.employeeNumber}</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>نوع اليونيفورم</label><input id="oe-type" value="${o.uniformType||''}"></div>
+          <div class="field"><label>المقاس</label>
+            <select id="oe-size">${['S','M','L','XL','XXL','XXXL'].map(s=>`<option ${o.size===s?'selected':''}>${s}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>السعر (ريال)</label><input id="oe-price" type="number" value="${o.price}"></div>
+          <div class="field"><label>الحالة</label>
+            <select id="oe-status">${Object.values(STATUS).map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>
+          </div>
+        </div>
+        <div class="helper">تغيير الحالة هنا يُستخدم فقط لتصحيح خطأ إداري. لتحديث سير العمل الطبيعي (استلام، تنفيذ، تسليم) استخدم أزرار "التفاصيل".</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-primary" id="save-order-edit">حفظ التعديلات</button>
+        <button class="btn btn-ghost" id="cancel-order-edit">إلغاء</button>
+      </div>
+    </div>
+  </div>`;
+}
+function bindOrderEditModal(o){
+  document.getElementById('save-order-edit').onclick = ()=>{
+    const type = val('oe-type');
+    const size = document.getElementById('oe-size').value;
+    const price = Number(document.getElementById('oe-price').value);
+    const status = document.getElementById('oe-status').value;
+    if(!type){ toast('الرجاء تعبئة نوع اليونيفورم','err'); return; }
+    if(!price || price<=0){ toast('السعر يجب أن يكون أكبر من صفر','err'); return; }
+    const oldStatus = o.status;
+    Object.assign(o, {uniformType:type, size, price, status});
+    if(status!==oldStatus){
+      const today = todayISO();
+      if(status===STATUS.DELIVERED && !o.deliveredDate){
+        o.deliveredDate = today;
+        const emp = STATE.employees.find(e=>e.id===o.employeeId);
+        if(emp){ emp.lastIssueDate = today; emp.nextDueDate = addDays(today, STATE.settings.eligibilityDays); persist('employees'); }
+      }
+      if(status===STATUS.DONE && !o.completedDate) o.completedDate = today;
+      if(status===STATUS.RECEIVED && !o.receivedDate) o.receivedDate = today;
+      if(status===STATUS.PROGRESS && !o.progressDate) o.progressDate = today;
+    }
+    persist('orders');
+    addAudit('تعديل طلب يونيفورم', `#${o.code} — ${o.employeeName}` + (status!==oldStatus? ` (الحالة: ${oldStatus} ← ${status})`:''));
+    toast('تم حفظ تعديلات الطلب');
+    closeModal();
+  };
+  document.getElementById('cancel-order-edit').onclick = closeModal;
 }
 
 /* ---- Order detail modal ---- */
@@ -1417,6 +1500,7 @@ function bindModal(){
 
   if(STATE.modal.type==='employee') bindEmployeeModal(STATE.modal.emp);
   if(STATE.modal.type==='order') bindOrderModal();
+  if(STATE.modal.type==='orderEdit') bindOrderEditModal(STATE.modal.order);
   if(STATE.modal.type==='orderDetail') bindOrderDetailModal(STATE.modal.order);
   if(STATE.modal.type==='user') bindUserModal(STATE.modal.editUser);
 }
