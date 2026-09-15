@@ -230,31 +230,47 @@
 <body>
 <div id="app"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script>
+/* =========================================================
+   FIREBASE SETUP
+========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBF7_UJ306yY5rO4WhEulA9x365vPBzgM4",
+  authDomain: "uniform-d1d50.firebaseapp.com",
+  databaseURL: "https://uniform-d1d50-default-rtdb.firebaseio.com",
+  projectId: "uniform-d1d50",
+  storageBucket: "uniform-d1d50.firebasestorage.app",
+  messagingSenderId: "643755333124",
+  appId: "1:643755333124:web:f4a1e821a825d09a008751",
+  measurementId: "G-HRTMQ5F2MW"
+};
+firebase.initializeApp(firebaseConfig);
+const fbdb = firebase.database();
+const DB_ROOT = 'uniformApp';
+function dbRef(key){ return fbdb.ref(DB_ROOT + '/' + key); }
+
+let FIREBASE_CONNECTED = true;
+fbdb.ref('.info/connected').on('value', snap=>{
+  FIREBASE_CONNECTED = snap.val() === true;
+  if(STATE && STATE.currentUser) render();
+});
+</script>
 <script>
 /* =========================================================
    STORAGE HELPERS
 ========================================================= */
 async function dbGet(key, fallback){
   try{
-    const r = await window.storage.get(key, true);
-    return r ? JSON.parse(r.value) : fallback;
-  }catch(e){ return fallback; }
+    const snap = await dbRef(key).once('value');
+    const v = snap.val();
+    return (v===null || v===undefined) ? fallback : v;
+  }catch(e){ console.error('firebase read error', e); return fallback; }
 }
 async function dbSet(key, value){
-  try{ return await window.storage.set(key, JSON.stringify(value), true); }
-  catch(e){ console.error('storage error', e); return null; }
-}
-
-let STORAGE_OK = true;
-async function checkStorageHealth(){
-  try{
-    const testVal = 'ping_' + Date.now();
-    const w = await window.storage.set('uf-ping', testVal, true);
-    if(!w) throw new Error('write failed');
-    const r = await window.storage.get('uf-ping', true);
-    if(!r || r.value !== testVal) throw new Error('readback mismatch');
-    STORAGE_OK = true;
-  }catch(e){ STORAGE_OK = false; }
+  try{ await dbRef(key).set(value); return true; }
+  catch(e){ console.error('firebase write error', e); return null; }
 }
 
 /* =========================================================
@@ -284,60 +300,55 @@ let STATE = {
   currentUser:null, view:'dashboard', sidebarOpen:false, toasts:[]
 };
 
-async function loadAll(){
-  const [users, employees, orders, notifications, auditLogs, branches, settings] = await Promise.all([
-    dbGet('uf-users', null), dbGet('uf-employees', []), dbGet('uf-orders', []),
-    dbGet('uf-notifications', []), dbGet('uf-audit', []), dbGet('uf-branches', null), dbGet('uf-settings', null)
-  ]);
-  if(!users){
-    STATE.users = [
-      {id:uid('u'), username:'admin', password:'admin123', role:'admin', name:'مدير النظام'},
-      {id:uid('u'), username:'hr', password:'hr123', role:'hr', name:'سارة العتيبي'},
-      {id:uid('u'), username:'tailor', password:'tailor123', role:'tailor', name:'محمد الخياط'},
-    ];
-    await dbSet('uf-users', STATE.users);
-  } else STATE.users = users;
+const KEY_MAP = {employees:'uf-employees', orders:'uf-orders', notifications:'uf-notifications', auditLogs:'uf-audit', users:'uf-users', branches:'uf-branches', settings:'uf-settings'};
 
-  if(!branches){
-    STATE.branches = ['الفرع الرئيسي','فرع جدة','فرع الرياض','فرع الدمام'];
-    await dbSet('uf-branches', STATE.branches);
-  } else STATE.branches = branches;
-
-  if(!settings){
-    STATE.settings = {price:90, eligibilityDays:365};
-    await dbSet('uf-settings', STATE.settings);
-  } else STATE.settings = settings;
-
-  STATE.employees = employees;
-  STATE.orders = orders;
-  STATE.notifications = notifications;
-  STATE.auditLogs = auditLogs;
+/* Attaches a live listener per data type. Firebase fires the callback
+   immediately with the current value, then again in real time whenever
+   ANY user writes a change — this is what makes HR/tailor/admin see
+   each other's updates instantly without refreshing the page. */
+function attachRealtimeListeners(){
+  return new Promise(resolve=>{
+    const pending = new Set(Object.keys(KEY_MAP));
+    let resolved = false;
+    Object.entries(KEY_MAP).forEach(([stateKey, dbKey])=>{
+      dbRef(dbKey).on('value', async (snap)=>{
+        let val = snap.val();
+        if(val===null || val===undefined){
+          if(stateKey==='users'){
+            val = [
+              {id:uid('u'), username:'admin', password:'admin123', role:'admin', name:'مدير النظام'},
+              {id:uid('u'), username:'hr', password:'hr123', role:'hr', name:'سارة العتيبي'},
+              {id:uid('u'), username:'tailor', password:'tailor123', role:'tailor', name:'محمد الخياط'},
+            ];
+            dbRef(dbKey).set(val);
+          } else if(stateKey==='branches'){
+            val = ['الفرع الرئيسي','فرع جدة','فرع الرياض','فرع الدمام'];
+            dbRef(dbKey).set(val);
+          } else if(stateKey==='settings'){
+            val = {price:90, eligibilityDays:365};
+            dbRef(dbKey).set(val);
+          } else {
+            val = [];
+          }
+        }
+        // Firebase can return arrays as objects with numeric keys once items are removed in the middle — normalize back to arrays for list types.
+        if(Array.isArray(STATE[stateKey]) && !Array.isArray(val) && typeof val === 'object'){
+          val = Object.values(val);
+        }
+        STATE[stateKey] = val;
+        if(pending.has(stateKey)){
+          pending.delete(stateKey);
+          if(pending.size===0 && !resolved){ resolved = true; resolve(); }
+        } else if(STATE.currentUser && !STATE.modal){
+          render();
+        }
+      });
+    });
+  });
 }
 
 async function persist(key){
-  const map = {employees:'uf-employees', orders:'uf-orders', notifications:'uf-notifications', auditLogs:'uf-audit', users:'uf-users', branches:'uf-branches', settings:'uf-settings'};
-  await dbSet(map[key], STATE[key]);
-}
-
-/* ---- Background sync: pulls the latest shared data so other roles
-   (e.g. the tailor) see new orders/notifications without a manual reload ---- */
-let SYNC_BUSY = false;
-async function syncFromStorage(){
-  if(SYNC_BUSY || STATE.modal) return; // don't yank data while someone is filling a form
-  SYNC_BUSY = true;
-  try{
-    const [employees, orders, notifications, auditLogs, users, branches, settings] = await Promise.all([
-      dbGet('uf-employees', STATE.employees), dbGet('uf-orders', STATE.orders), dbGet('uf-notifications', STATE.notifications),
-      dbGet('uf-audit', STATE.auditLogs), dbGet('uf-users', STATE.users), dbGet('uf-branches', STATE.branches), dbGet('uf-settings', STATE.settings)
-    ]);
-    const changed = JSON.stringify(orders)!==JSON.stringify(STATE.orders) || JSON.stringify(employees)!==JSON.stringify(STATE.employees)
-      || JSON.stringify(notifications)!==JSON.stringify(STATE.notifications) || JSON.stringify(auditLogs)!==JSON.stringify(STATE.auditLogs)
-      || JSON.stringify(users)!==JSON.stringify(STATE.users) || JSON.stringify(branches)!==JSON.stringify(STATE.branches) || JSON.stringify(settings)!==JSON.stringify(STATE.settings);
-    STATE.employees=employees; STATE.orders=orders; STATE.notifications=notifications; STATE.auditLogs=auditLogs;
-    STATE.users=users; STATE.branches=branches; STATE.settings=settings;
-    if(changed && STATE.currentUser) render();
-  }catch(e){ /* silent */ }
-  SYNC_BUSY = false;
+  await dbSet(KEY_MAP[key], STATE[key]);
 }
 
 function addAudit(action, details){
@@ -417,7 +428,7 @@ function loginView(){
         <div style="text-align:center;margin-top:16px;">
           <button class="link-btn" id="li-employee-portal">دخول الموظف لمعرفة حالة الطلب ←</button>
         </div>
-        ${!STORAGE_OK? `<div class="storage-warn-login">⚠ الحفظ الدائم غير مفعّل في هذه النافذة — البيانات لن تنتقل بين الحسابات أو الجلسات. تأكد من فتح هذا الملف داخل نافذة Claude مباشرة، وليس كملف تم تنزيله على الجهاز.</div>` : ''}
+        ${!FIREBASE_CONNECTED? `<div class="storage-warn-login">⚠ لا يوجد اتصال حالي بقاعدة بيانات Firebase — تحقق من الإنترنت أو إعدادات المشروع.</div>` : ''}
       </div>
     </div>
   </div>`;
@@ -515,7 +526,7 @@ function shellView(){
   const unread = STATE.notifications.filter(n=>!n.read).length;
   return `
   <div class="shell">
-    ${!STORAGE_OK? `<div class="storage-warn" style="grid-column:1/-1;">⚠ الحفظ الدائم غير مفعّل حاليًا — أي بيانات تُدخل الآن لن تصل للحسابات الأخرى ولن تبقى بعد إغلاق الصفحة. افتح الملف من داخل نافذة Claude مباشرة وليس كملف محمّل على الجهاز.</div>` : ''}
+    ${!FIREBASE_CONNECTED? `<div class="storage-warn" style="grid-column:1/-1;">⚠ انقطع الاتصال بقاعدة بيانات Firebase — التغييرات ستُحفظ محليًا مؤقتًا وتتزامن عند عودة الاتصال.</div>` : ''}
     <div class="sidebar ${STATE.sidebarOpen?'open':''}">
       <div class="brand"><div class="mark">ي</div><div>نظام اليونيفورم<br><span style="font-weight:400;color:#8FA3B8;font-size:11px;">إدارة الصرف والمتابعة</span></div></div>
       <div class="nav-group-label">القائمة</div>
@@ -532,7 +543,7 @@ function shellView(){
           <h1>${viewTitle(STATE.view)}</h1>
         </div>
         <div class="actions">
-          <button class="bell" id="refresh-btn" title="تحديث البيانات">⟳</button>
+          <span class="bell" id="refresh-btn" title="${FIREBASE_CONNECTED? 'متصل بقاعدة البيانات — التحديثات فورية':'غير متصل'}" style="${FIREBASE_CONNECTED?'':'color:var(--red-700);'}">${FIREBASE_CONNECTED? '🟢':'🔴'}</span>
           <button class="bell" id="bell-btn">🔔${unread?`<span class="dot"></span>`:''}</button>
           <div class="avatar">${initials(u.name)}</div>
         </div>
@@ -554,8 +565,6 @@ function bindShell(){
   if(menuToggle) menuToggle.onclick = ()=>{ STATE.sidebarOpen = !STATE.sidebarOpen; render(); };
   const bellBtn = document.getElementById('bell-btn');
   if(bellBtn) bellBtn.onclick = ()=>{ STATE.view='notifications'; render(); };
-  const refreshBtn = document.getElementById('refresh-btn');
-  if(refreshBtn) refreshBtn.onclick = async ()=>{ await syncFromStorage(); toast('تم تحديث البيانات'); };
   bindViewHandlers();
   bindModal();
 }
@@ -1227,13 +1236,9 @@ function bindModal(){
    INIT
 ========================================================= */
 (async function init(){
-  document.getElementById('app').innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#8B97A3;">جارِ التحميل...</div>`;
-  await checkStorageHealth();
-  await loadAll();
+  document.getElementById('app').innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#8B97A3;">جارِ الاتصال بقاعدة البيانات...</div>`;
+  await attachRealtimeListeners();
   render();
-  setInterval(syncFromStorage, 4000);
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) syncFromStorage(); });
-  window.addEventListener('focus', syncFromStorage);
 })();
 </script>
 </body>
