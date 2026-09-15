@@ -48,38 +48,60 @@
   /* ---------- Login ---------- */
   .login-wrap{
     min-height:100vh;display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(160deg,var(--navy-900),var(--navy-800) 55%,var(--navy-700));
+    background:
+      radial-gradient(1200px 500px at 15% 0%, rgba(180,145,58,.10), transparent 60%),
+      linear-gradient(160deg,var(--navy-900),var(--navy-800) 55%,var(--navy-700));
     padding:20px;
   }
   .login-card{
-    background:var(--surface);width:100%;max-width:940px;border-radius:16px;
-    overflow:hidden;display:grid;grid-template-columns:1fr 1fr;box-shadow:0 20px 60px rgba(0,0,0,.35);
+    background:var(--surface);width:100%;max-width:960px;border-radius:18px;
+    overflow:hidden;display:grid;grid-template-columns:1.05fr 1fr;
+    box-shadow:0 30px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.04);
+    position:relative;
   }
   @media (max-width:760px){ .login-card{grid-template-columns:1fr;} .login-side{display:none;} }
   .login-side{
-    background:radial-gradient(circle at 30% 20%, #1c3a5a, var(--navy-900) 70%);
-    color:#fff;padding:44px 36px;display:flex;flex-direction:column;justify-content:space-between;
+    background:
+      radial-gradient(520px 320px at 85% -10%, rgba(180,145,58,.16), transparent 60%),
+      radial-gradient(circle at 20% 15%, #1c3a5a, var(--navy-900) 70%);
+    color:#fff;padding:48px 40px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;
   }
-  .login-side h1{font-size:22px;margin:0 0 10px;font-weight:700;}
-  .login-side p{color:#C9D4E0;font-size:13.5px;margin:0;}
+  .login-side::after{
+    content:'';position:absolute;inset:auto -40px -60px auto;width:220px;height:220px;border-radius:50%;
+    background:radial-gradient(circle, rgba(180,145,58,.14), transparent 70%);
+  }
+  .stitch{
+    border:none;border-top:2px dashed rgba(180,145,58,.55);width:54px;margin:18px 0 22px;
+  }
+  .login-side h1{font-size:26px;margin:0 0 12px;font-weight:800;line-height:1.35;letter-spacing:.2px;}
+  .login-side p{color:#C3D0DE;font-size:13.5px;line-height:1.75;margin:0;max-width:340px;}
   .login-side .mark{
-    width:46px;height:46px;border-radius:10px;background:var(--gold-600);
-    display:flex;align-items:center;justify-content:center;font-weight:800;color:#2b2208;font-size:18px;margin-bottom:22px;
+    width:48px;height:48px;border-radius:12px;background:var(--gold-600);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#2b2208;font-size:19px;
+    box-shadow:0 6px 18px rgba(180,145,58,.35);
   }
-  .login-side ul{list-style:none;padding:0;margin:18px 0 0;color:#B9C6D4;font-size:13px;}
-  .login-side li{padding:6px 0;border-top:1px solid rgba(255,255,255,.08);}
-  .login-form{padding:44px 40px;display:flex;flex-direction:column;justify-content:center;}
-  .login-form h2{margin:0 0 4px;font-size:20px;}
-  .login-form .sub{color:var(--text-600);font-size:13px;margin-bottom:26px;}
-  .field{margin-bottom:14px;}
-  .field label{display:block;font-size:12.5px;color:var(--text-600);margin-bottom:6px;font-weight:600;}
+  .feature-list{list-style:none;padding:0;margin:0;position:relative;z-index:1;}
+  .feature-list li{
+    display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid rgba(255,255,255,.08);
+    color:#C3D0DE;font-size:13.5px;line-height:1.6;
+  }
+  .feature-list li:first-child{border-top:none;}
+  .feature-list .dot{
+    width:6px;height:6px;border-radius:50%;background:var(--gold-600);margin-top:7px;flex:none;
+  }
+  .login-form{padding:48px 44px;display:flex;flex-direction:column;justify-content:center;}
+  .login-form .eyebrow{color:var(--gold-600);font-size:12px;font-weight:700;letter-spacing:.3px;margin-bottom:8px;}
+  .login-form h2{margin:0 0 6px;font-size:24px;font-weight:800;color:var(--navy-900);}
+  .login-form .sub{color:var(--text-600);font-size:13.5px;margin-bottom:28px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:12.5px;color:var(--text-600);margin-bottom:7px;font-weight:600;}
   .field input,.field select{
-    width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);
-    background:#FBFBFC;outline:none;transition:border-color .15s;
+    width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:9px;
+    background:#FBFBFC;outline:none;transition:border-color .15s, box-shadow .15s;
   }
-  .field input:focus,.field select:focus{border-color:var(--navy-700);background:#fff;}
+  .field input:focus,.field select:focus{border-color:var(--navy-700);background:#fff;box-shadow:0 0 0 3px rgba(22,50,79,.08);}
   .btn{
-    border:none;border-radius:var(--radius-sm);padding:10px 16px;font-weight:600;font-size:13.5px;
+    border:none;border-radius:9px;padding:12px 16px;font-weight:700;font-size:13.5px;
     display:inline-flex;align-items:center;gap:6px;justify-content:center;transition:filter .12s, transform .05s;
   }
   .btn:active{transform:translateY(1px);}
@@ -94,8 +116,13 @@
   .btn-block{width:100%;}
   .btn-sm{padding:6px 10px;font-size:12.5px;}
   .err{color:var(--red-700);font-size:12.5px;margin-top:10px;min-height:16px;}
-  .demo-box{margin-top:22px;padding:12px 14px;background:var(--navy-100);border-radius:var(--radius-sm);font-size:12px;color:var(--text-600);}
-  .demo-box b{color:var(--text-900);}
+  .portal-link{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:24px;
+    padding:12px 14px;border-radius:9px;border:1px solid var(--border);background:#FBFBFC;
+    color:var(--navy-800);font-size:12.5px;font-weight:600;text-decoration:none;cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  .portal-link:hover{border-color:var(--gold-600);background:var(--gold-100);}
   .link-btn{background:none;border:none;color:var(--navy-700);font-size:12.5px;text-decoration:underline;padding:0;cursor:pointer;}
 
   /* ---------- Shell ---------- */
@@ -402,32 +429,28 @@ function loginView(){
       <div class="login-side">
         <div>
           <div class="mark">ي</div>
-          <h1>نظام إدارة وصرف اليونيفورم</h1>
+          <hr class="stitch">
+          <h1>نظام إدارة<br>وصرف اليونيفورم</h1>
           <p>ربط كامل بين الموارد البشرية والخياط، مع متابعة دقيقة لاستحقاق كل موظف واحتساب تلقائي لدورة السنة.</p>
         </div>
-        <ul>
-          <li>متابعة حالة الطلب من الإنشاء حتى التسليم</li>
-          <li>منع تكرار الصرف قبل مرور سنة كاملة</li>
-          <li>لوحات تحكم منفصلة للموارد البشرية والخياط</li>
-          <li>سجل عمليات كامل لكل تغيير</li>
+        <ul class="feature-list">
+          <li><span class="dot"></span>متابعة حالة الطلب من الإنشاء حتى التسليم</li>
+          <li><span class="dot"></span>منع تكرار الصرف قبل مرور سنة كاملة</li>
+          <li><span class="dot"></span>لوحات تحكم منفصلة للموارد البشرية والخياط</li>
+          <li><span class="dot"></span>سجل عمليات كامل لكل تغيير</li>
         </ul>
       </div>
       <div class="login-form">
+        <div class="eyebrow">مرحبًا بعودتك</div>
         <h2>تسجيل الدخول</h2>
-        <div class="sub">أدخل بيانات حسابك للمتابعة</div>
-        <div class="field"><label>اسم المستخدم</label><input id="li-user" placeholder="مثال: hr"></div>
-        <div class="field"><label>كلمة المرور</label><input id="li-pass" type="password" placeholder="••••••••"></div>
+        <div class="sub">أدخل بيانات حسابك للمتابعة إلى لوحة التحكم</div>
+        <div class="field"><label>اسم المستخدم</label><input id="li-user" placeholder="اسم المستخدم" autocomplete="username"></div>
+        <div class="field"><label>كلمة المرور</label><input id="li-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password"></div>
         <button class="btn btn-primary btn-block" id="li-submit">دخول</button>
         <div class="err" id="li-err"></div>
-        <div class="demo-box">
-          <div><b>حسابات تجريبية:</b></div>
-          admin / admin123 — مدير النظام<br>
-          hr / hr123 — الموارد البشرية<br>
-          tailor / tailor123 — الخياط
-        </div>
-        <div style="text-align:center;margin-top:16px;">
-          <button class="link-btn" id="li-employee-portal">دخول الموظف لمعرفة حالة الطلب ←</button>
-        </div>
+        <a href="#" class="portal-link" id="li-employee-portal">
+          <span>الاستعلام عن حالة اليونيفورم كموظف</span><span>←</span>
+        </a>
         ${!FIREBASE_CONNECTED? `<div class="storage-warn-login">⚠ لا يوجد اتصال حالي بقاعدة بيانات Firebase — تحقق من الإنترنت أو إعدادات المشروع.</div>` : ''}
       </div>
     </div>
@@ -437,7 +460,7 @@ function loginView(){
 function bindLogin(){
   document.getElementById('li-submit').onclick = doLogin;
   document.getElementById('li-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
-  document.getElementById('li-employee-portal').onclick = ()=>{ STATE.employeePortal = true; renderEmployeePortal(); };
+  document.getElementById('li-employee-portal').onclick = (e)=>{ e.preventDefault(); STATE.employeePortal = true; renderEmployeePortal(); };
 }
 function doLogin(){
   const u = document.getElementById('li-user').value.trim();
