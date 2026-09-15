@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام إدارة وصرف اليونيفورم</title>
+<style>
+  :root{
+    --navy-900:#0F2439;
+    --navy-800:#16324F;
+    --navy-700:#20456B;
+    --navy-100:#E9EEF4;
+    --gold-600:#B4913A;
+    --gold-100:#F3EBD6;
+    --bg:#F5F6F8;
+    --surface:#FFFFFF;
+    --border:#E1E5EA;
+    --text-900:#1B2430;
+    --text-600:#5B6774;
+    --text-400:#8B97A3;
+    --green-700:#256B4A;
+    --green-100:#E4F3EC;
+    --amber-700:#9A6A17;
+    --amber-100:#FBF0D9;
+    --red-700:#B03A3A;
+    --red-100:#FBEAEA;
+    --blue-700:#2A5A8A;
+    --blue-100:#E7EFF7;
+    --radius:10px;
+    --radius-sm:6px;
+    --shadow:0 1px 2px rgba(15,36,57,.06),0 1px 8px rgba(15,36,57,.04);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:"Segoe UI","Tahoma",Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text-900);
+    direction:rtl;
+    font-size:14px;
+    line-height:1.6;
+  }
+  #app{min-height:100vh;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;font-size:14px;}
+  a{color:inherit;}
+
+  /* ---------- Login ---------- */
+  .login-wrap{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,var(--navy-900),var(--navy-800) 55%,var(--navy-700));
+    padding:20px;
+  }
+  .login-card{
+    background:var(--surface);width:100%;max-width:940px;border-radius:16px;
+    overflow:hidden;display:grid;grid-template-columns:1fr 1fr;box-shadow:0 20px 60px rgba(0,0,0,.35);
+  }
+  @media (max-width:760px){ .login-card{grid-template-columns:1fr;} .login-side{display:none;} }
+  .login-side{
+    background:radial-gradient(circle at 30% 20%, #1c3a5a, var(--navy-900) 70%);
+    color:#fff;padding:44px 36px;display:flex;flex-direction:column;justify-content:space-between;
+  }
+  .login-side h1{font-size:22px;margin:0 0 10px;font-weight:700;}
+  .login-side p{color:#C9D4E0;font-size:13.5px;margin:0;}
+  .login-side .mark{
+    width:46px;height:46px;border-radius:10px;background:var(--gold-600);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#2b2208;font-size:18px;margin-bottom:22px;
+  }
+  .login-side ul{list-style:none;padding:0;margin:18px 0 0;color:#B9C6D4;font-size:13px;}
+  .login-side li{padding:6px 0;border-top:1px solid rgba(255,255,255,.08);}
+  .login-form{padding:44px 40px;display:flex;flex-direction:column;justify-content:center;}
+  .login-form h2{margin:0 0 4px;font-size:20px;}
+  .login-form .sub{color:var(--text-600);font-size:13px;margin-bottom:26px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;color:var(--text-600);margin-bottom:6px;font-weight:600;}
+  .field input,.field select{
+    width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);
+    background:#FBFBFC;outline:none;transition:border-color .15s;
+  }
+  .field input:focus,.field select:focus{border-color:var(--navy-700);background:#fff;}
+  .btn{
+    border:none;border-radius:var(--radius-sm);padding:10px 16px;font-weight:600;font-size:13.5px;
+    display:inline-flex;align-items:center;gap:6px;justify-content:center;transition:filter .12s, transform .05s;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--navy-800);color:#fff;}
+  .btn-primary:hover{filter:brightness(1.12);}
+  .btn-gold{background:var(--gold-600);color:#2b2208;}
+  .btn-gold:hover{filter:brightness(1.08);}
+  .btn-ghost{background:transparent;color:var(--navy-800);border:1px solid var(--border);}
+  .btn-ghost:hover{background:var(--navy-100);}
+  .btn-danger{background:var(--red-100);color:var(--red-700);}
+  .btn-danger:hover{filter:brightness(0.97);}
+  .btn-block{width:100%;}
+  .btn-sm{padding:6px 10px;font-size:12.5px;}
+  .err{color:var(--red-700);font-size:12.5px;margin-top:10px;min-height:16px;}
+  .demo-box{margin-top:22px;padding:12px 14px;background:var(--navy-100);border-radius:var(--radius-sm);font-size:12px;color:var(--text-600);}
+  .demo-box b{color:var(--text-900);}
+  .link-btn{background:none;border:none;color:var(--navy-700);font-size:12.5px;text-decoration:underline;padding:0;cursor:pointer;}
+
+  /* ---------- Shell ---------- */
+  .shell{display:grid;grid-template-columns:230px 1fr;min-height:100vh;}
+  @media (max-width:880px){ .shell{grid-template-columns:1fr;} .sidebar{position:fixed;inset:0 auto 0 0;transform:translateX(100%);z-index:40;transition:transform .2s;width:230px;} .sidebar.open{transform:translateX(0);} }
+  .sidebar{
+    background:var(--navy-900);color:#fff;padding:20px 14px;display:flex;flex-direction:column;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:0 6px 20px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:14px;}
+  .brand .mark{width:34px;height:34px;border-radius:8px;background:var(--gold-600);display:flex;align-items:center;justify-content:center;font-weight:800;color:#2b2208;flex:none;}
+  .brand div{font-size:13px;font-weight:700;line-height:1.3;}
+  .nav-group-label{font-size:10.5px;color:#7E93A8;letter-spacing:.3px;padding:14px 10px 6px;}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:#C9D4E0;
+    font-size:13.5px;cursor:pointer;margin-bottom:2px;
+  }
+  .nav-item .ic{width:18px;text-align:center;flex:none;}
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
+  .nav-item.active{background:var(--gold-600);color:#2b2208;font-weight:700;}
+  .sidebar-foot{margin-top:auto;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;}
+  .who{font-size:12.5px;color:#C9D4E0;padding:0 10px 8px;}
+  .who b{color:#fff;display:block;font-size:13.5px;}
+
+  .main{display:flex;flex-direction:column;min-width:0;}
+  .topbar{
+    background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;
+    display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;
+  }
+  .topbar h1{font-size:17px;margin:0;font-weight:700;}
+  .topbar .actions{display:flex;align-items:center;gap:10px;}
+  .bell{position:relative;background:var(--navy-100);border:none;border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .bell .dot{position:absolute;top:5px;left:6px;width:8px;height:8px;background:var(--red-700);border-radius:50%;border:2px solid #fff;}
+  .menu-toggle{display:none;background:var(--navy-100);border:none;border-radius:8px;width:36px;height:36px;}
+  @media (max-width:880px){ .menu-toggle{display:block;} }
+  .content{padding:22px 24px;flex:1;}
+
+  /* ---------- Cards / grid ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);}
+  .stat-card .label{font-size:12px;color:var(--text-600);margin-bottom:8px;}
+  .stat-card .value{font-size:24px;font-weight:800;color:var(--navy-900);}
+  .stat-card .value.gold{color:var(--gold-600);}
+  .stat-card .value.green{color:var(--green-700);}
+  .stat-card .value.red{color:var(--red-700);}
+  .stat-card .value.amber{color:var(--amber-700);}
+
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;}
+  .panel-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  .panel-head h3{margin:0;font-size:15px;}
+  .panel-body{padding:18px 20px;}
+  .panel-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .panel-toolbar input,.panel-toolbar select{padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:#FBFBFC;font-size:13px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{
+    text-align:right;color:var(--text-600);font-weight:700;font-size:11.5px;letter-spacing:.2px;
+    padding:10px 12px;border-bottom:1.5px solid var(--border);white-space:nowrap;
+  }
+  tbody td{padding:11px 12px;border-bottom:1px solid #EEF0F2;white-space:nowrap;}
+  tbody tr:hover{background:#FAFBFC;}
+  .table-wrap{overflow-x:auto;}
+  .empty-row{text-align:center;color:var(--text-400);padding:34px 10px;}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;}
+  .badge-new{background:var(--blue-100);color:var(--blue-700);}
+  .badge-received{background:#EDE7F6;color:#5B3E9A;}
+  .badge-progress{background:var(--amber-100);color:var(--amber-700);}
+  .badge-done{background:var(--gold-100);color:var(--gold-600);}
+  .badge-delivered{background:var(--green-100);color:var(--green-700);}
+  .badge-rejected{background:var(--red-100);color:var(--red-700);}
+  .badge-eligible{background:var(--green-100);color:var(--green-700);}
+  .badge-not-eligible{background:var(--red-100);color:var(--red-700);}
+
+  .icon-btn{background:var(--navy-100);border:none;border-radius:7px;width:30px;height:30px;font-size:13px;}
+  .icon-btn:hover{background:var(--navy-700);color:#fff;}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(15,20,28,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .modal{background:#fff;border-radius:14px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .modal.wide{max-width:760px;}
+  .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .modal-head h3{margin:0;font-size:16px;}
+  .modal-close{background:none;border:none;font-size:18px;color:var(--text-600);width:30px;height:30px;border-radius:7px;}
+  .modal-close:hover{background:var(--navy-100);}
+  .modal-body{padding:20px 22px;}
+  .modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-start;gap:10px;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:520px){.grid-2{grid-template-columns:1fr;}}
+
+  .info-line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--border);font-size:13px;}
+  .info-line span:first-child{color:var(--text-600);}
+  .info-line span:last-child{font-weight:600;}
+
+  .timeline{list-style:none;padding:0;margin:0;}
+  .timeline li{display:flex;gap:12px;padding-bottom:18px;position:relative;}
+  .timeline li:last-child{padding-bottom:0;}
+  .timeline .dot{width:12px;height:12px;border-radius:50%;background:var(--border);margin-top:4px;flex:none;position:relative;z-index:1;}
+  .timeline li.done .dot{background:var(--green-700);}
+  .timeline .line{position:absolute;top:16px;bottom:-4px;right:5px;width:2px;background:var(--border);}
+  .timeline .tl-title{font-weight:700;font-size:13px;}
+  .timeline .tl-date{font-size:12px;color:var(--text-600);}
+
+  .alert{padding:12px 14px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:14px;}
+  .alert-red{background:var(--red-100);color:var(--red-700);}
+  .alert-amber{background:var(--amber-100);color:var(--amber-700);}
+  .alert-green{background:var(--green-100);color:var(--green-700);}
+  .alert-blue{background:var(--blue-100);color:var(--blue-700);}
+
+  .tag-pill{display:inline-block;padding:3px 9px;border-radius:999px;background:var(--navy-100);color:var(--navy-800);font-size:11.5px;font-weight:600;}
+  .notif-item{padding:12px 14px;border-bottom:1px solid #EEF0F2;font-size:13px;}
+  .notif-item:last-child{border-bottom:none;}
+  .notif-item .t{font-size:11px;color:var(--text-400);margin-top:3px;}
+  .empty-state{text-align:center;padding:50px 20px;color:var(--text-400);}
+  .empty-state .big{font-size:30px;margin-bottom:10px;}
+  .checkbox-row{display:flex;align-items:center;gap:8px;font-size:13px;}
+  .helper{font-size:11.5px;color:var(--text-400);margin-top:4px;}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--navy-800);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none;}
+  .toast-wrap{position:fixed;bottom:20px;left:20px;z-index:200;display:flex;flex-direction:column;gap:8px;}
+  .toast{background:var(--navy-900);color:#fff;padding:12px 16px;border-radius:8px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);min-width:220px;}
+  .toast.err{background:var(--red-700);}
+  .toast.ok{background:var(--green-700);}
+  .storage-warn{
+    background:#3A1F1F;color:#FFD9D9;padding:10px 18px;font-size:12.5px;text-align:center;
+    border-bottom:1px solid rgba(255,255,255,.1);
+  }
+  .storage-warn b{color:#fff;}
+  .storage-warn-login{
+    background:var(--red-100);color:var(--red-700);padding:10px 12px;border-radius:8px;font-size:12px;margin-top:14px;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================
+   STORAGE HELPERS
+========================================================= */
+async function dbGet(key, fallback){
+  try{
+    const r = await window.storage.get(key, true);
+    return r ? JSON.parse(r.value) : fallback;
+  }catch(e){ return fallback; }
+}
+async function dbSet(key, value){
+  try{ return await window.storage.set(key, JSON.stringify(value), true); }
+  catch(e){ console.error('storage error', e); return null; }
+}
+
+let STORAGE_OK = true;
+async function checkStorageHealth(){
+  try{
+    const testVal = 'ping_' + Date.now();
+    const w = await window.storage.set('uf-ping', testVal, true);
+    if(!w) throw new Error('write failed');
+    const r = await window.storage.get('uf-ping', true);
+    if(!r || r.value !== testVal) throw new Error('readback mismatch');
+    STORAGE_OK = true;
+  }catch(e){ STORAGE_OK = false; }
+}
+
+/* =========================================================
+   CONSTANTS
+========================================================= */
+const STATUS = {
+  NEW:'جديد', RECEIVED:'تم استلامه من الخياط', PROGRESS:'قيد التنفيذ',
+  DONE:'تم الإنجاز', DELIVERED:'تم التسليم للموظف', REJECTED:'مرفوض / يحتاج تعديل'
+};
+const STATUS_BADGE = {
+  [STATUS.NEW]:'badge-new', [STATUS.RECEIVED]:'badge-received', [STATUS.PROGRESS]:'badge-progress',
+  [STATUS.DONE]:'badge-done', [STATUS.DELIVERED]:'badge-delivered', [STATUS.REJECTED]:'badge-rejected'
+};
+const ROLE_LABEL = {admin:'مدير النظام', hr:'الموارد البشرية', tailor:'الخياط'};
+
+const uid = (p)=> p + '_' + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
+function fmtDate(d){ if(!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('ar-SA-u-ca-gregory',{year:'numeric',month:'2-digit',day:'2-digit'}); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function addDays(iso, days){ const d = new Date(iso); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+function daysBetween(a,b){ return Math.ceil((new Date(a) - new Date(b)) / 86400000); }
+
+/* =========================================================
+   APP STATE
+========================================================= */
+let STATE = {
+  users:[], employees:[], orders:[], notifications:[], auditLogs:[], branches:[], settings:{price:90, eligibilityDays:365},
+  currentUser:null, view:'dashboard', sidebarOpen:false, toasts:[]
+};
+
+async function loadAll(){
+  const [users, employees, orders, notifications, auditLogs, branches, settings] = await Promise.all([
+    dbGet('uf-users', null), dbGet('uf-employees', []), dbGet('uf-orders', []),
+    dbGet('uf-notifications', []), dbGet('uf-audit', []), dbGet('uf-branches', null), dbGet('uf-settings', null)
+  ]);
+  if(!users){
+    STATE.users = [
+      {id:uid('u'), username:'admin', password:'admin123', role:'admin', name:'مدير النظام'},
+      {id:uid('u'), username:'hr', password:'hr123', role:'hr', name:'سارة العتيبي'},
+      {id:uid('u'), username:'tailor', password:'tailor123', role:'tailor', name:'محمد الخياط'},
+    ];
+    await dbSet('uf-users', STATE.users);
+  } else STATE.users = users;
+
+  if(!branches){
+    STATE.branches = ['الفرع الرئيسي','فرع جدة','فرع الرياض','فرع الدمام'];
+    await dbSet('uf-branches', STATE.branches);
+  } else STATE.branches = branches;
+
+  if(!settings){
+    STATE.settings = {price:90, eligibilityDays:365};
+    await dbSet('uf-settings', STATE.settings);
+  } else STATE.settings = settings;
+
+  STATE.employees = employees;
+  STATE.orders = orders;
+  STATE.notifications = notifications;
+  STATE.auditLogs = auditLogs;
+}
+
+async function persist(key){
+  const map = {employees:'uf-employees', orders:'uf-orders', notifications:'uf-notifications', auditLogs:'uf-audit', users:'uf-users', branches:'uf-branches', settings:'uf-settings'};
+  await dbSet(map[key], STATE[key]);
+}
+
+/* ---- Background sync: pulls the latest shared data so other roles
+   (e.g. the tailor) see new orders/notifications without a manual reload ---- */
+let SYNC_BUSY = false;
+async function syncFromStorage(){
+  if(SYNC_BUSY || STATE.modal) return; // don't yank data while someone is filling a form
+  SYNC_BUSY = true;
+  try{
+    const [employees, orders, notifications, auditLogs, users, branches, settings] = await Promise.all([
+      dbGet('uf-employees', STATE.employees), dbGet('uf-orders', STATE.orders), dbGet('uf-notifications', STATE.notifications),
+      dbGet('uf-audit', STATE.auditLogs), dbGet('uf-users', STATE.users), dbGet('uf-branches', STATE.branches), dbGet('uf-settings', STATE.settings)
+    ]);
+    const changed = JSON.stringify(orders)!==JSON.stringify(STATE.orders) || JSON.stringify(employees)!==JSON.stringify(STATE.employees)
+      || JSON.stringify(notifications)!==JSON.stringify(STATE.notifications) || JSON.stringify(auditLogs)!==JSON.stringify(STATE.auditLogs)
+      || JSON.stringify(users)!==JSON.stringify(STATE.users) || JSON.stringify(branches)!==JSON.stringify(STATE.branches) || JSON.stringify(settings)!==JSON.stringify(STATE.settings);
+    STATE.employees=employees; STATE.orders=orders; STATE.notifications=notifications; STATE.auditLogs=auditLogs;
+    STATE.users=users; STATE.branches=branches; STATE.settings=settings;
+    if(changed && STATE.currentUser) render();
+  }catch(e){ /* silent */ }
+  SYNC_BUSY = false;
+}
+
+function addAudit(action, details){
+  STATE.auditLogs.unshift({id:uid('a'), action, details, user: STATE.currentUser? STATE.currentUser.name + ' ('+ROLE_LABEL[STATE.currentUser.role]+')':'—', at: new Date().toISOString()});
+  persist('auditLogs');
+}
+function addNotification(message){
+  STATE.notifications.unshift({id:uid('n'), message, at:new Date().toISOString(), read:false});
+  persist('notifications');
+}
+function toast(msg, type){
+  const id = uid('t');
+  STATE.toasts.push({id, msg, type: type||'ok'});
+  render();
+  setTimeout(()=>{ STATE.toasts = STATE.toasts.filter(t=>t.id!==id); render(); }, 3200);
+}
+
+/* =========================================================
+   ELIGIBILITY
+========================================================= */
+function employeeEligibility(emp){
+  if(!emp.nextDueDate) return {eligible:true, daysLeft:0};
+  const days = daysBetween(emp.nextDueDate, todayISO());
+  return {eligible: days <= 0, daysLeft: Math.max(days,0)};
+}
+
+/* =========================================================
+   RENDER ROOT
+========================================================= */
+function render(){
+  const root = document.getElementById('app');
+  if(!STATE.currentUser){ root.innerHTML = loginView(); bindLogin(); renderToasts(); return; }
+  root.innerHTML = shellView();
+  bindShell();
+  renderToasts();
+}
+
+function renderToasts(){
+  let wrap = document.querySelector('.toast-wrap');
+  if(!wrap){ wrap = document.createElement('div'); wrap.className='toast-wrap'; document.body.appendChild(wrap); }
+  wrap.innerHTML = STATE.toasts.map(t=>`<div class="toast ${t.type==='err'?'err':'ok'}">${t.msg}</div>`).join('');
+}
+
+/* =========================================================
+   LOGIN VIEW
+========================================================= */
+function loginView(){
+  return `
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-side">
+        <div>
+          <div class="mark">ي</div>
+          <h1>نظام إدارة وصرف اليونيفورم</h1>
+          <p>ربط كامل بين الموارد البشرية والخياط، مع متابعة دقيقة لاستحقاق كل موظف واحتساب تلقائي لدورة السنة.</p>
+        </div>
+        <ul>
+          <li>متابعة حالة الطلب من الإنشاء حتى التسليم</li>
+          <li>منع تكرار الصرف قبل مرور سنة كاملة</li>
+          <li>لوحات تحكم منفصلة للموارد البشرية والخياط</li>
+          <li>سجل عمليات كامل لكل تغيير</li>
+        </ul>
+      </div>
+      <div class="login-form">
+        <h2>تسجيل الدخول</h2>
+        <div class="sub">أدخل بيانات حسابك للمتابعة</div>
+        <div class="field"><label>اسم المستخدم</label><input id="li-user" placeholder="مثال: hr"></div>
+        <div class="field"><label>كلمة المرور</label><input id="li-pass" type="password" placeholder="••••••••"></div>
+        <button class="btn btn-primary btn-block" id="li-submit">دخول</button>
+        <div class="err" id="li-err"></div>
+        <div class="demo-box">
+          <div><b>حسابات تجريبية:</b></div>
+          admin / admin123 — مدير النظام<br>
+          hr / hr123 — الموارد البشرية<br>
+          tailor / tailor123 — الخياط
+        </div>
+        <div style="text-align:center;margin-top:16px;">
+          <button class="link-btn" id="li-employee-portal">دخول الموظف لمعرفة حالة الطلب ←</button>
+        </div>
+        ${!STORAGE_OK? `<div class="storage-warn-login">⚠ الحفظ الدائم غير مفعّل في هذه النافذة — البيانات لن تنتقل بين الحسابات أو الجلسات. تأكد من فتح هذا الملف داخل نافذة Claude مباشرة، وليس كملف تم تنزيله على الجهاز.</div>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function bindLogin(){
+  document.getElementById('li-submit').onclick = doLogin;
+  document.getElementById('li-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  document.getElementById('li-employee-portal').onclick = ()=>{ STATE.employeePortal = true; renderEmployeePortal(); };
+}
+function doLogin(){
+  const u = document.getElementById('li-user').value.trim();
+  const p = document.getElementById('li-pass').value;
+  const user = STATE.users.find(x=>x.username===u && x.password===p);
+  if(!user){ document.getElementById('li-err').textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة.'; return; }
+  STATE.currentUser = user;
+  STATE.view = 'dashboard';
+  addAudit('تسجيل دخول', user.name);
+  render();
+}
+function logout(){
+  addAudit('تسجيل خروج', STATE.currentUser.name);
+  STATE.currentUser = null;
+  render();
+}
+
+/* ---- Employee self-service portal (no login) ---- */
+function renderEmployeePortal(){
+  const root = document.getElementById('app');
+  root.innerHTML = `
+  <div class="login-wrap">
+    <div class="login-card" style="grid-template-columns:1fr;max-width:480px;">
+      <div class="login-form">
+        <h2>حالة اليونيفورم</h2>
+        <div class="sub">أدخل الرقم الوظيفي ورقم الهوية للتحقق من حالتك</div>
+        <div class="field"><label>الرقم الوظيفي</label><input id="ep-num" placeholder="مثال: 1023"></div>
+        <div class="field"><label>رقم الهوية / الإقامة</label><input id="ep-id" placeholder="10 أرقام"></div>
+        <button class="btn btn-primary btn-block" id="ep-submit">عرض الحالة</button>
+        <div class="err" id="ep-err"></div>
+        <div id="ep-result"></div>
+        <div style="text-align:center;margin-top:16px;">
+          <button class="link-btn" id="ep-back">← العودة لتسجيل الدخول</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('ep-back').onclick = ()=>{ STATE.employeePortal=false; render(); };
+  document.getElementById('ep-submit').onclick = ()=>{
+    const num = document.getElementById('ep-num').value.trim();
+    const nid = document.getElementById('ep-id').value.trim();
+    const emp = STATE.employees.find(e=>e.employeeNumber===num && e.nationalId===nid);
+    const errEl = document.getElementById('ep-err');
+    const resEl = document.getElementById('ep-result');
+    if(!emp){ errEl.textContent='لم يتم العثور على بيانات مطابقة.'; resEl.innerHTML=''; return; }
+    errEl.textContent='';
+    const elig = employeeEligibility(emp);
+    const empOrders = STATE.orders.filter(o=>o.employeeId===emp.id).sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate));
+    const latest = empOrders[0];
+    resEl.innerHTML = `
+      <div class="alert ${elig.eligible?'alert-green':'alert-blue'}" style="margin-top:16px;">
+        ${elig.eligible ? 'أنت مستحق لصرف يونيفورم جديد.' : `الاستحقاق القادم بعد ${elig.daysLeft} يوم (${fmtDate(emp.nextDueDate)}).`}
+      </div>
+      <div class="info-line"><span>الاسم</span><span>${emp.name}</span></div>
+      <div class="info-line"><span>نوع اليونيفورم الحالي</span><span>${emp.uniformType||'ثوب'}</span></div>
+      <div class="info-line"><span>تاريخ آخر صرف</span><span>${fmtDate(emp.lastIssueDate)}</span></div>
+      <div class="info-line"><span>حالة آخر طلب</span><span>${latest? `<span class="badge ${STATUS_BADGE[latest.status]}">${latest.status}</span>` : '—'}</span></div>
+    `;
+  };
+}
+
+/* =========================================================
+   SHELL (post-login)
+========================================================= */
+function navItems(role){
+  const base = [{v:'dashboard', ic:'▦', l:'لوحة التحكم'}];
+  if(role==='hr' || role==='admin') base.push({v:'employees', ic:'👤', l:'الموظفون'});
+  base.push({v:'orders', ic:'📋', l:'الطلبات'});
+  base.push({v:'notifications', ic:'🔔', l:'الإشعارات'});
+  if(role==='admin'){
+    base.push({v:'users', ic:'🛠', l:'المستخدمون'});
+    base.push({v:'settings', ic:'⚙', l:'الإعدادات'});
+    base.push({v:'audit', ic:'🗂', l:'سجل العمليات'});
+  }
+  return base;
+}
+function viewTitle(v){
+  return {dashboard:'لوحة التحكم', employees:'الموظفون', orders:'الطلبات', notifications:'الإشعارات',
+    users:'إدارة المستخدمين', settings:'الإعدادات العامة', audit:'سجل العمليات', employeeDetail:'سجل الموظف'}[v] || '';
+}
+function initials(name){ return (name||'').trim().split(' ').slice(0,2).map(w=>w[0]).join(''); }
+
+function shellView(){
+  const u = STATE.currentUser;
+  const items = navItems(u.role);
+  const unread = STATE.notifications.filter(n=>!n.read).length;
+  return `
+  <div class="shell">
+    ${!STORAGE_OK? `<div class="storage-warn" style="grid-column:1/-1;">⚠ الحفظ الدائم غير مفعّل حاليًا — أي بيانات تُدخل الآن لن تصل للحسابات الأخرى ولن تبقى بعد إغلاق الصفحة. افتح الملف من داخل نافذة Claude مباشرة وليس كملف محمّل على الجهاز.</div>` : ''}
+    <div class="sidebar ${STATE.sidebarOpen?'open':''}">
+      <div class="brand"><div class="mark">ي</div><div>نظام اليونيفورم<br><span style="font-weight:400;color:#8FA3B8;font-size:11px;">إدارة الصرف والمتابعة</span></div></div>
+      <div class="nav-group-label">القائمة</div>
+      ${items.map(i=>`<div class="nav-item ${STATE.view===i.v?'active':''}" data-nav="${i.v}"><span class="ic">${i.ic}</span>${i.l}</div>`).join('')}
+      <div class="sidebar-foot">
+        <div class="who"><b>${u.name}</b>${ROLE_LABEL[u.role]}</div>
+        <div class="nav-item" data-action="logout"><span class="ic">↩</span>تسجيل الخروج</div>
+      </div>
+    </div>
+    <div class="main">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="menu-toggle" id="menu-toggle">☰</button>
+          <h1>${viewTitle(STATE.view)}</h1>
+        </div>
+        <div class="actions">
+          <button class="bell" id="refresh-btn" title="تحديث البيانات">⟳</button>
+          <button class="bell" id="bell-btn">🔔${unread?`<span class="dot"></span>`:''}</button>
+          <div class="avatar">${initials(u.name)}</div>
+        </div>
+      </div>
+      <div class="content" id="content">${viewContent()}</div>
+    </div>
+  </div>
+  ${STATE.modal ? modalWrap() : ''}
+  `;
+}
+
+function bindShell(){
+  document.querySelectorAll('[data-nav]').forEach(el=>{
+    el.onclick = ()=>{ STATE.view = el.dataset.nav; STATE.sidebarOpen=false; STATE.detailId=null; render(); };
+  });
+  const logoutBtn = document.querySelector('[data-action="logout"]');
+  if(logoutBtn) logoutBtn.onclick = logout;
+  const menuToggle = document.getElementById('menu-toggle');
+  if(menuToggle) menuToggle.onclick = ()=>{ STATE.sidebarOpen = !STATE.sidebarOpen; render(); };
+  const bellBtn = document.getElementById('bell-btn');
+  if(bellBtn) bellBtn.onclick = ()=>{ STATE.view='notifications'; render(); };
+  const refreshBtn = document.getElementById('refresh-btn');
+  if(refreshBtn) refreshBtn.onclick = async ()=>{ await syncFromStorage(); toast('تم تحديث البيانات'); };
+  bindViewHandlers();
+  bindModal();
+}
+
+/* =========================================================
+   VIEW ROUTER
+========================================================= */
+function viewContent(){
+  switch(STATE.view){
+    case 'dashboard': return dashboardView();
+    case 'employees': return employeesView();
+    case 'orders': return ordersView();
+    case 'notifications': return notificationsView();
+    case 'users': return usersView();
+    case 'settings': return settingsView();
+    case 'audit': return auditView();
+    case 'employeeDetail': return employeeDetailView();
+    default: return '';
+  }
+}
+function bindViewHandlers(){
+  switch(STATE.view){
+    case 'dashboard': bindDashboard(); break;
+    case 'employees': bindEmployees(); break;
+    case 'orders': bindOrders(); break;
+    case 'notifications': bindNotifications(); break;
+    case 'users': bindUsers(); break;
+    case 'settings': bindSettings(); break;
+    case 'employeeDetail': bindEmployeeDetail(); break;
+  }
+}
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+function dashboardView(){
+  const total = STATE.employees.length;
+  const orders = STATE.orders;
+  const countByStatus = s => orders.filter(o=>o.status===s).length;
+  const eligible = STATE.employees.filter(e=>employeeEligibility(e).eligible).length;
+  const notEligible = total - eligible;
+  const delivered = countByStatus(STATUS.DELIVERED);
+  const price = STATE.settings.price;
+  const totalCost = delivered * price;
+  const totalOrderValue = orders.length * price;
+
+  const cards = [
+    {l:'إجمالي الموظفين', v: total, c:''},
+    {l:'طلبات جديدة', v: countByStatus(STATUS.NEW), c:''},
+    {l:'قيد التنفيذ', v: countByStatus(STATUS.RECEIVED)+countByStatus(STATUS.PROGRESS), c:'amber'},
+    {l:'طلبات منجزة', v: countByStatus(STATUS.DONE), c:'gold'},
+    {l:'تم تسليمها', v: delivered, c:'green'},
+    {l:'مستحقون لليونيفورم', v: eligible, c:'green'},
+    {l:'غير مستحقين حاليًا', v: notEligible, c:'red'},
+    {l:'إجمالي تكلفة اليونيفورم', v: totalCost.toLocaleString('ar')+' ريال', c:'gold'},
+    {l:'إجمالي قيمة طلبات الخياط', v: totalOrderValue.toLocaleString('ar')+' ريال', c:''},
+  ];
+  const recent = [...orders].sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate)).slice(0,6);
+  return `
+    <div class="stat-grid">
+      ${cards.map(c=>`<div class="stat-card"><div class="label">${c.l}</div><div class="value ${c.c}">${c.v}</div></div>`).join('')}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>أحدث الطلبات</h3></div>
+      <div class="panel-body table-wrap">
+        <table><thead><tr><th>رقم الطلب</th><th>الموظف</th><th>الفرع</th><th>الحالة</th><th>تاريخ الطلب</th></tr></thead>
+        <tbody>
+          ${recent.length? recent.map(o=>`<tr><td>#${o.code}</td><td>${o.employeeName}</td><td>${o.branch}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${o.status}</span></td><td>${fmtDate(o.createdDate)}</td></tr>`).join('') : `<tr><td colspan="5" class="empty-row">لا توجد طلبات بعد</td></tr>`}
+        </tbody></table>
+      </div>
+    </div>
+  `;
+}
+function bindDashboard(){}
+
+/* =========================================================
+   EMPLOYEES
+========================================================= */
+function employeesView(){
+  const role = STATE.currentUser.role;
+  const q = STATE.empFilters || {search:'', branch:'', status:'', title:''};
+  let list = STATE.employees.filter(e=>{
+    const s = q.search.trim();
+    const matchSearch = !s || e.name.includes(s) || e.employeeNumber.includes(s) || e.nationalId.includes(s);
+    const matchBranch = !q.branch || e.branch===q.branch;
+    const matchTitle = !q.title || e.jobTitle===q.title;
+    const elig = employeeEligibility(e);
+    const matchStatus = !q.status || (q.status==='eligible' ? elig.eligible : !elig.eligible);
+    return matchSearch && matchBranch && matchTitle && matchStatus;
+  });
+  const titles = [...new Set(STATE.employees.map(e=>e.jobTitle).filter(Boolean))];
+
+  return `
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-toolbar">
+          <input id="emp-search" placeholder="بحث بالاسم / الرقم الوظيفي / الهوية" value="${q.search}" style="width:230px;">
+          <select id="emp-branch"><option value="">كل الفروع</option>${STATE.branches.map(b=>`<option ${q.branch===b?'selected':''}>${b}</option>`).join('')}</select>
+          <select id="emp-title"><option value="">كل المسميات</option>${titles.map(t=>`<option ${q.title===t?'selected':''}>${t}</option>`).join('')}</select>
+          <select id="emp-status">
+            <option value="">كل حالات الاستحقاق</option>
+            <option value="eligible" ${q.status==='eligible'?'selected':''}>مستحق</option>
+            <option value="not" ${q.status==='not'?'selected':''}>غير مستحق</option>
+          </select>
+        </div>
+        ${role==='hr'||role==='admin' ? `<button class="btn btn-primary btn-sm" id="add-emp-btn">+ إضافة موظف</button>` : ''}
+      </div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr><th>الموظف</th><th>الرقم الوظيفي</th><th>الهوية</th><th>الفرع</th><th>المسمى</th><th>المقاس</th><th>آخر صرف</th><th>الاستحقاق القادم</th><th>الحالة</th><th></th></tr></thead>
+          <tbody>
+          ${list.length ? list.map(e=>{
+            const elig = employeeEligibility(e);
+            return `<tr>
+              <td><a href="#" data-emp-detail="${e.id}" style="color:var(--navy-800);font-weight:600;text-decoration:none;">${e.name}</a></td>
+              <td>${e.employeeNumber}</td><td>${e.nationalId}</td><td>${e.branch}</td><td>${e.jobTitle}</td><td>${e.size}</td>
+              <td>${fmtDate(e.lastIssueDate)}</td><td>${fmtDate(e.nextDueDate)}</td>
+              <td>${elig.eligible? `<span class="badge badge-eligible">مستحق</span>` : `<span class="badge badge-not-eligible">بعد ${elig.daysLeft} يوم</span>`}</td>
+              <td>
+                ${role==='hr'||role==='admin' ? `<button class="icon-btn" data-edit-emp="${e.id}" title="تعديل">✎</button>` : ''}
+                ${(role==='hr'||role==='admin') && elig.eligible ? `<button class="icon-btn" data-new-order="${e.id}" title="طلب جديد">+</button>` : ''}
+              </td>
+            </tr>`;
+          }).join('') : `<tr><td colspan="10" class="empty-row">لا يوجد موظفون مطابقون</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+function bindEmployees(){
+  const sEl = document.getElementById('emp-search'), bEl = document.getElementById('emp-branch'),
+        tEl = document.getElementById('emp-title'), stEl = document.getElementById('emp-status');
+  const upd = ()=>{ STATE.empFilters = {search:sEl.value, branch:bEl.value, title:tEl.value, status:stEl.value}; render(); };
+  if(sEl){ sEl.oninput = upd; bEl.onchange=upd; tEl.onchange=upd; stEl.onchange=upd; }
+  const addBtn = document.getElementById('add-emp-btn');
+  if(addBtn) addBtn.onclick = ()=> openEmployeeModal(null);
+  document.querySelectorAll('[data-edit-emp]').forEach(el=> el.onclick = ()=> openEmployeeModal(el.dataset.editEmp));
+  document.querySelectorAll('[data-new-order]').forEach(el=> el.onclick = ()=> openOrderModal(el.dataset.newOrder));
+  document.querySelectorAll('[data-emp-detail]').forEach(el=> el.onclick = (ev)=>{ ev.preventDefault(); STATE.detailId = el.dataset.empDetail; STATE.view='employeeDetail'; render(); });
+}
+
+function openEmployeeModal(empId){
+  const emp = empId ? STATE.employees.find(e=>e.id===empId) : null;
+  STATE.modal = {type:'employee', emp};
+  render();
+}
+
+/* =========================================================
+   EMPLOYEE DETAIL / HISTORY
+========================================================= */
+function employeeDetailView(){
+  const emp = STATE.employees.find(e=>e.id===STATE.detailId);
+  if(!emp) return `<div class="empty-state"><div class="big">🔍</div>لم يتم العثور على الموظف</div>`;
+  const history = STATE.orders.filter(o=>o.employeeId===emp.id).sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate));
+  const elig = employeeEligibility(emp);
+  return `
+    <button class="btn btn-ghost btn-sm" id="back-to-emp" style="margin-bottom:16px;">→ العودة لقائمة الموظفين</button>
+    <div class="panel">
+      <div class="panel-head"><h3>${emp.name}</h3><span class="badge ${elig.eligible?'badge-eligible':'badge-not-eligible'}">${elig.eligible?'مستحق حالياً':'بعد '+elig.daysLeft+' يوم'}</span></div>
+      <div class="panel-body">
+        <div class="grid-2">
+          <div class="info-line"><span>الرقم الوظيفي</span><span>${emp.employeeNumber}</span></div>
+          <div class="info-line"><span>رقم الهوية</span><span>${emp.nationalId}</span></div>
+          <div class="info-line"><span>الفرع</span><span>${emp.branch}</span></div>
+          <div class="info-line"><span>المسمى الوظيفي</span><span>${emp.jobTitle}</span></div>
+          <div class="info-line"><span>المقاس</span><span>${emp.size}</span></div>
+          <div class="info-line"><span>تاريخ آخر صرف</span><span>${fmtDate(emp.lastIssueDate)}</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>سجل اليونيفورمات المستلمة</h3></div>
+      <div class="panel-body table-wrap">
+        <table><thead><tr><th>رقم الطلب</th><th>تاريخ الطلب</th><th>النوع</th><th>المقاس</th><th>السعر</th><th>تاريخ الإنجاز</th><th>تاريخ التسليم</th><th>الحالة</th></tr></thead>
+        <tbody>
+        ${history.length? history.map(o=>`<tr>
+          <td>#${o.code}</td><td>${fmtDate(o.createdDate)}</td><td>${o.uniformType}</td><td>${o.size}</td><td>${o.price} ريال</td>
+          <td>${fmtDate(o.completedDate)}</td><td>${fmtDate(o.deliveredDate)}</td>
+          <td><span class="badge ${STATUS_BADGE[o.status]}">${o.status}</span></td>
+        </tr>`).join('') : `<tr><td colspan="8" class="empty-row">لا يوجد سجل بعد</td></tr>`}
+        </tbody></table>
+      </div>
+    </div>
+  `;
+}
+function bindEmployeeDetail(){
+  const b = document.getElementById('back-to-emp');
+  if(b) b.onclick = ()=>{ STATE.view='employees'; render(); };
+}
+
+/* =========================================================
+   ORDERS
+========================================================= */
+function ordersView(){
+  const role = STATE.currentUser.role;
+  const q = STATE.orderFilters || {search:'', status:''};
+  let list = STATE.orders.filter(o=>{
+    const s = q.search.trim();
+    const matchSearch = !s || o.employeeName.includes(s) || o.employeeNumber.includes(s) || o.code.includes(s);
+    const matchStatus = !q.status || o.status===q.status;
+    return matchSearch && matchStatus;
+  }).sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate));
+
+  return `
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-toolbar">
+          <input id="ord-search" placeholder="بحث برقم الطلب / اسم الموظف" value="${q.search}" style="width:230px;">
+          <select id="ord-status">
+            <option value="">كل الحالات</option>
+            ${Object.values(STATUS).map(s=>`<option ${q.status===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        ${role==='hr'||role==='admin' ? `<button class="btn btn-primary btn-sm" id="add-order-btn">+ طلب يونيفورم جديد</button>`:''}
+      </div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead><tr><th>رقم الطلب</th><th>الموظف</th><th>الرقم الوظيفي</th><th>الفرع</th><th>المقاس</th><th>تاريخ الطلب</th><th>الحالة</th><th>السعر</th><th></th></tr></thead>
+          <tbody>
+          ${list.length? list.map(o=>`<tr>
+            <td>#${o.code}</td><td>${o.employeeName}</td><td>${o.employeeNumber}</td><td>${o.branch}</td><td>${o.size}</td>
+            <td>${fmtDate(o.createdDate)}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${o.status}</span></td><td>${o.price} ريال</td>
+            <td><button class="icon-btn" data-order-detail="${o.id}" title="التفاصيل">↗</button></td>
+          </tr>`).join('') : `<tr><td colspan="9" class="empty-row">لا توجد طلبات</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+function bindOrders(){
+  const sEl = document.getElementById('ord-search'), stEl = document.getElementById('ord-status');
+  const upd = ()=>{ STATE.orderFilters = {search:sEl.value, status:stEl.value}; render(); };
+  if(sEl){ sEl.oninput = upd; stEl.onchange = upd; }
+  const addBtn = document.getElementById('add-order-btn');
+  if(addBtn) addBtn.onclick = ()=> openOrderModal(null);
+  document.querySelectorAll('[data-order-detail]').forEach(el=> el.onclick = ()=> openOrderDetailModal(el.dataset.orderDetail));
+}
+
+function openOrderModal(preselectEmpId){
+  const eligibleList = STATE.employees.filter(e=>employeeEligibility(e).eligible || STATE.currentUser.role==='admin');
+  STATE.modal = {type:'order', preselectEmpId, eligibleList};
+  render();
+}
+function openOrderDetailModal(orderId){
+  STATE.modal = {type:'orderDetail', order: STATE.orders.find(o=>o.id===orderId)};
+  render();
+}
+
+/* =========================================================
+   NOTIFICATIONS
+========================================================= */
+function notificationsView(){
+  const list = STATE.notifications;
+  return `
+  <div class="panel">
+    <div class="panel-head"><h3>الإشعارات</h3>${list.length? `<button class="btn btn-ghost btn-sm" id="mark-all">تعليم الكل كمقروء</button>`:''}</div>
+    <div class="panel-body" style="padding:0;">
+      ${list.length? list.map(n=>`
+        <div class="notif-item" style="background:${n.read?'transparent':'var(--blue-100)'}">
+          ${n.message}
+          <div class="t">${new Date(n.at).toLocaleString('ar-SA-u-ca-gregory')}</div>
+        </div>`).join('') : `<div class="empty-state"><div class="big">🔔</div>لا توجد إشعارات حتى الآن</div>`}
+    </div>
+  </div>`;
+}
+function bindNotifications(){
+  const btn = document.getElementById('mark-all');
+  if(btn) btn.onclick = ()=>{ STATE.notifications.forEach(n=>n.read=true); persist('notifications'); render(); };
+}
+
+/* =========================================================
+   USERS (admin)
+========================================================= */
+function usersView(){
+  return `
+  <div class="panel">
+    <div class="panel-head"><h3>المستخدمون</h3><button class="btn btn-primary btn-sm" id="add-user-btn">+ إضافة مستخدم</button></div>
+    <div class="panel-body table-wrap">
+      <table><thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th></th></tr></thead>
+      <tbody>
+      ${STATE.users.map(u=>`<tr><td>${u.name}</td><td>${u.username}</td><td><span class="tag-pill">${ROLE_LABEL[u.role]}</span></td>
+        <td>${u.id!==STATE.currentUser.id? `<button class="icon-btn" data-del-user="${u.id}" title="حذف">🗑</button>`:''}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+  </div>`;
+}
+function bindUsers(){
+  document.getElementById('add-user-btn').onclick = ()=>{ STATE.modal={type:'user'}; render(); };
+  document.querySelectorAll('[data-del-user]').forEach(el=> el.onclick = ()=>{
+    const u = STATE.users.find(x=>x.id===el.dataset.delUser);
+    if(confirm(`حذف المستخدم "${u.name}"؟`)){
+      STATE.users = STATE.users.filter(x=>x.id!==u.id);
+      persist('users'); addAudit('حذف مستخدم', u.name); render();
+    }
+  });
+}
+
+/* =========================================================
+   SETTINGS (admin)
+========================================================= */
+function settingsView(){
+  const s = STATE.settings;
+  return `
+  <div class="panel">
+    <div class="panel-head"><h3>الإعدادات العامة</h3></div>
+    <div class="panel-body">
+      <div class="grid-2">
+        <div class="field"><label>سعر اليونيفورم (ريال)</label><input id="set-price" type="number" value="${s.price}"></div>
+        <div class="field"><label>مدة الاستحقاق (بالأيام)</label><input id="set-days" type="number" value="${s.eligibilityDays}"></div>
+      </div>
+      <button class="btn btn-primary" id="save-settings">حفظ الإعدادات</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>الفروع</h3></div>
+    <div class="panel-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        ${STATE.branches.map(b=>`<span class="tag-pill">${b} <button data-del-branch="${b}" style="border:none;background:none;color:var(--red-700);cursor:pointer;">×</button></span>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input id="new-branch" placeholder="اسم فرع جديد" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:6px;">
+        <button class="btn btn-ghost btn-sm" id="add-branch-btn">إضافة</button>
+      </div>
+    </div>
+  </div>`;
+}
+function bindSettings(){
+  document.getElementById('save-settings').onclick = ()=>{
+    const price = Number(document.getElementById('set-price').value);
+    const days = Number(document.getElementById('set-days').value);
+    if(price<=0 || days<=0){ toast('القيم يجب أن تكون أكبر من صفر','err'); return; }
+    STATE.settings = {price, eligibilityDays: days};
+    persist('settings'); addAudit('تعديل الإعدادات', `السعر: ${price} ريال، مدة الاستحقاق: ${days} يوم`);
+    toast('تم حفظ الإعدادات'); render();
+  };
+  document.querySelectorAll('[data-del-branch]').forEach(el=> el.onclick = ()=>{
+    STATE.branches = STATE.branches.filter(b=>b!==el.dataset.delBranch);
+    persist('branches'); render();
+  });
+  document.getElementById('add-branch-btn').onclick = ()=>{
+    const v = document.getElementById('new-branch').value.trim();
+    if(!v) return;
+    if(!STATE.branches.includes(v)) STATE.branches.push(v);
+    persist('branches'); render();
+  };
+}
+
+/* =========================================================
+   AUDIT LOG (admin)
+========================================================= */
+function auditView(){
+  return `
+  <div class="panel">
+    <div class="panel-head"><h3>سجل العمليات</h3></div>
+    <div class="panel-body table-wrap">
+      <table><thead><tr><th>العملية</th><th>التفاصيل</th><th>بواسطة</th><th>الوقت</th></tr></thead>
+      <tbody>
+      ${STATE.auditLogs.length? STATE.auditLogs.map(a=>`<tr><td><b>${a.action}</b></td><td>${a.details||''}</td><td>${a.user}</td><td>${new Date(a.at).toLocaleString('ar-SA-u-ca-gregory')}</td></tr>`).join('') : `<tr><td colspan="4" class="empty-row">لا يوجد سجل بعد</td></tr>`}
+      </tbody></table>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   MODALS
+========================================================= */
+function modalWrap(){
+  const m = STATE.modal;
+  if(m.type==='employee') return employeeModal(m.emp);
+  if(m.type==='order') return orderModal(m);
+  if(m.type==='orderDetail') return orderDetailModal(m.order);
+  if(m.type==='user') return userModal();
+  return '';
+}
+function closeModal(){ STATE.modal = null; render(); }
+
+/* ---- Employee modal ---- */
+function employeeModal(emp){
+  const titles = ['موظف مبيعات','مشرف فرع','أخصائي موارد بشرية','فني صيانة','محاسب','موظف استقبال'];
+  return `
+  <div class="overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-head"><h3>${emp?'تعديل بيانات موظف':'إضافة موظف جديد'}</h3><button class="modal-close" id="modal-close">✕</button></div>
+      <div class="modal-body">
+        <div class="grid-2">
+          <div class="field"><label>اسم الموظف</label><input id="f-name" value="${emp?.name||''}"></div>
+          <div class="field"><label>الرقم الوظيفي</label><input id="f-num" value="${emp?.employeeNumber||''}"></div>
+          <div class="field"><label>رقم الهوية / الإقامة</label><input id="f-nid" value="${emp?.nationalId||''}"></div>
+          <div class="field"><label>الفرع</label><select id="f-branch">${STATE.branches.map(b=>`<option ${emp?.branch===b?'selected':''}>${b}</option>`).join('')}</select></div>
+          <div class="field"><label>المسمى الوظيفي</label>
+            <select id="f-title">${titles.map(t=>`<option ${emp?.jobTitle===t?'selected':''}>${t}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>المقاس</label>
+            <select id="f-size">${['S','M','L','XL','XXL','XXXL'].map(s=>`<option ${emp?.size===s?'selected':''}>${s}</option>`).join('')}</select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-primary" id="save-emp">${emp?'حفظ التعديلات':'إضافة الموظف'}</button>
+        <button class="btn btn-ghost" id="cancel-emp">إلغاء</button>
+      </div>
+    </div>
+  </div>`;
+}
+function bindEmployeeModal(emp){
+  document.getElementById('save-emp').onclick = ()=>{
+    const name=val('f-name'), num=val('f-num'), nid=val('f-nid'), branch=val('f-branch'), title=val('f-title'), size=val('f-size');
+    if(!name||!num||!nid){ toast('الرجاء تعبئة الاسم والرقم الوظيفي والهوية','err'); return; }
+    if(!emp && STATE.employees.some(e=>e.employeeNumber===num)){ toast('الرقم الوظيفي مستخدم مسبقاً','err'); return; }
+    if(emp){
+      Object.assign(emp, {name, employeeNumber:num, nationalId:nid, branch, jobTitle:title, size});
+      addAudit('تعديل بيانات موظف', name);
+      toast('تم حفظ التعديلات');
+    } else {
+      STATE.employees.push({id:uid('e'), name, employeeNumber:num, nationalId:nid, branch, jobTitle:title, size, lastIssueDate:null, nextDueDate:null, uniformType:'ثوب'});
+      addAudit('إضافة موظف جديد', name);
+      toast('تمت إضافة الموظف');
+    }
+    persist('employees'); closeModal();
+  };
+  document.getElementById('cancel-emp').onclick = closeModal;
+}
+function val(id){ return document.getElementById(id).value.trim(); }
+
+/* ---- Order modal (create) ---- */
+function orderModal(m){
+  const emps = STATE.employees;
+  const isAdmin = STATE.currentUser.role==='admin';
+  return `
+  <div class="overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-head"><h3>طلب يونيفورم جديد</h3><button class="modal-close" id="modal-close">✕</button></div>
+      <div class="modal-body">
+        <div class="field">
+          <label>اختر الموظف</label>
+          <select id="o-emp">
+            <option value="">— اختر —</option>
+            ${emps.map(e=>`<option value="${e.id}" ${m.preselectEmpId===e.id?'selected':''}>${e.name} — ${e.employeeNumber}</option>`).join('')}
+          </select>
+        </div>
+        <div id="o-emp-info"></div>
+        <div class="grid-2">
+          <div class="field"><label>نوع اليونيفورم</label><select id="o-type"><option>ثوب</option></select></div>
+          <div class="field"><label>السعر</label><input id="o-price" value="${STATE.settings.price} ريال" disabled></div>
+        </div>
+        <div id="o-eligibility"></div>
+        ${isAdmin? `
+        <div class="checkbox-row" style="margin-top:6px;">
+          <input type="checkbox" id="o-override"> <label for="o-override">تجاوز شرط الاستحقاق (صلاحية المدير)</label>
+        </div>
+        <div class="field" id="o-reason-wrap" style="display:none;margin-top:10px;">
+          <label>سبب الاستثناء</label><textarea id="o-reason" rows="2" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;"></textarea>
+        </div>` : ''}
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-primary" id="save-order">إرسال الطلب إلى الخياط</button>
+        <button class="btn btn-ghost" id="cancel-order">إلغاء</button>
+      </div>
+    </div>
+  </div>`;
+}
+function bindOrderModal(){
+  const empSel = document.getElementById('o-emp');
+  const infoBox = document.getElementById('o-emp-info');
+  const eligBox = document.getElementById('o-eligibility');
+  const overrideCk = document.getElementById('o-override');
+  const reasonWrap = document.getElementById('o-reason-wrap');
+
+  function refreshEmp(){
+    const emp = STATE.employees.find(e=>e.id===empSel.value);
+    if(!emp){ infoBox.innerHTML=''; eligBox.innerHTML=''; return; }
+    infoBox.innerHTML = `
+      <div class="grid-2" style="margin:4px 0 10px;">
+        <div class="info-line"><span>الفرع</span><span>${emp.branch}</span></div>
+        <div class="info-line"><span>المسمى الوظيفي</span><span>${emp.jobTitle}</span></div>
+        <div class="info-line"><span>المقاس</span><span>${emp.size}</span></div>
+        <div class="info-line"><span>رقم الهوية</span><span>${emp.nationalId}</span></div>
+      </div>`;
+    const elig = employeeEligibility(emp);
+    if(elig.eligible){
+      eligBox.innerHTML = `<div class="alert alert-green">الموظف مستحق لصرف يونيفورم جديد.</div>`;
+    } else {
+      eligBox.innerHTML = `<div class="alert alert-red">لا يمكن إنشاء طلب يونيفورم جديد لهذا الموظف. الموظف استلم آخر يونيفورم بتاريخ ${fmtDate(emp.lastIssueDate)}، والاستحقاق القادم بتاريخ ${fmtDate(emp.nextDueDate)} (بعد ${elig.daysLeft} يوم).</div>`;
+    }
+  }
+  empSel.onchange = refreshEmp;
+  refreshEmp();
+
+  if(overrideCk){
+    overrideCk.onchange = ()=>{ reasonWrap.style.display = overrideCk.checked? 'block':'none'; };
+  }
+
+  document.getElementById('save-order').onclick = ()=>{
+    const emp = STATE.employees.find(e=>e.id===empSel.value);
+    if(!emp){ toast('الرجاء اختيار موظف','err'); return; }
+    const elig = employeeEligibility(emp);
+    const isAdmin = STATE.currentUser.role==='admin';
+    let exceptionReason = null;
+    if(!elig.eligible){
+      if(isAdmin && overrideCk && overrideCk.checked){
+        exceptionReason = document.getElementById('o-reason').value.trim();
+        if(!exceptionReason){ toast('يجب تسجيل سبب الاستثناء','err'); return; }
+      } else {
+        toast('الموظف غير مستحق لصرف يونيفورم جديد حالياً','err'); return;
+      }
+    }
+    if(STATE.orders.some(o=>o.employeeId===emp.id && ![STATUS.DELIVERED, STATUS.REJECTED].includes(o.status))){
+      toast('يوجد طلب قائم بالفعل لهذا الموظف','err'); return;
+    }
+    const order = {
+      id:uid('o'), code: String(1000+STATE.orders.length+1),
+      employeeId: emp.id, employeeName: emp.name, employeeNumber: emp.employeeNumber, branch: emp.branch, size: emp.size,
+      uniformType:'ثوب', price: STATE.settings.price, status: STATUS.NEW,
+      createdDate: todayISO(), receivedDate:null, progressDate:null, completedDate:null, deliveredDate:null,
+      requestedBy: STATE.currentUser.name, exceptionReason
+    };
+    STATE.orders.push(order);
+    persist('orders');
+    addAudit('إنشاء طلب يونيفورم', `${emp.name} — طلب #${order.code}` + (exceptionReason? ` (استثناء: ${exceptionReason})`:''));
+    addNotification(`تم إرسال طلب يونيفورم جديد إلى الخياط — الموظف ${emp.name} (#${order.code}).`);
+    toast('تم إرسال الطلب إلى الخياط');
+    closeModal();
+  };
+  document.getElementById('cancel-order').onclick = closeModal;
+}
+
+/* ---- Order detail modal ---- */
+function orderDetailModal(o){
+  const role = STATE.currentUser.role;
+  const steps = [
+    {key:STATUS.NEW, label:'تم إنشاء الطلب', date:o.createdDate},
+    {key:STATUS.RECEIVED, label:'استلام الخياط للطلب', date:o.receivedDate},
+    {key:STATUS.PROGRESS, label:'قيد التنفيذ', date:o.progressDate},
+    {key:STATUS.DONE, label:'تم الإنجاز', date:o.completedDate},
+    {key:STATUS.DELIVERED, label:'تم التسليم للموظف', date:o.deliveredDate},
+  ];
+  const order = ['created', STATUS.NEW, STATUS.RECEIVED, STATUS.PROGRESS, STATUS.DONE, STATUS.DELIVERED];
+  const curIdx = order.indexOf(o.status);
+
+  let tailorActions = '';
+  if(role==='tailor' || role==='admin'){
+    if(o.status===STATUS.NEW) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.RECEIVED}">تم استلام الطلب</button>`;
+    else if(o.status===STATUS.RECEIVED) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.PROGRESS}">بدء التنفيذ</button>`;
+    else if(o.status===STATUS.PROGRESS) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.DONE}">تم الإنجاز</button>`;
+    if([STATUS.NEW,STATUS.RECEIVED,STATUS.PROGRESS].includes(o.status)) tailorActions += ` <button class="btn btn-danger btn-sm" data-set-status="${STATUS.REJECTED}">طلب تعديل / رفض</button>`;
+  }
+  let hrActions = '';
+  if((role==='hr'||role==='admin') && o.status===STATUS.DONE){
+    hrActions = `<button class="btn btn-primary btn-sm" data-set-status="${STATUS.DELIVERED}">تسجيل تسليم اليونيفورم للموظف</button>`;
+  }
+
+  return `
+  <div class="overlay" id="modal-overlay">
+    <div class="modal wide">
+      <div class="modal-head"><h3>تفاصيل الطلب #${o.code}</h3><button class="modal-close" id="modal-close">✕</button></div>
+      <div class="modal-body">
+        <div class="grid-2" style="margin-bottom:18px;">
+          <div class="info-line"><span>الموظف</span><span>${o.employeeName}</span></div>
+          <div class="info-line"><span>الرقم الوظيفي</span><span>${o.employeeNumber}</span></div>
+          <div class="info-line"><span>الفرع</span><span>${o.branch}</span></div>
+          <div class="info-line"><span>المقاس</span><span>${o.size}</span></div>
+          <div class="info-line"><span>نوع اليونيفورم</span><span>${o.uniformType}</span></div>
+          <div class="info-line"><span>السعر</span><span>${o.price} ريال</span></div>
+        </div>
+        ${o.exceptionReason? `<div class="alert alert-amber">تم إنشاء هذا الطلب باستثناء إداري — السبب: ${o.exceptionReason}</div>`:''}
+        ${o.status===STATUS.REJECTED? `<div class="alert alert-red">هذا الطلب مرفوض / يحتاج تعديل.</div>`:''}
+        <h4 style="margin:18px 0 10px;font-size:13.5px;">مسار الطلب</h4>
+        <ul class="timeline">
+          ${steps.map((s,i)=>`
+            <li class="${o.status!==STATUS.REJECTED && curIdx>=order.indexOf(s.key) ? 'done':''}">
+              ${i<steps.length-1?'<div class="line"></div>':''}
+              <div class="dot"></div>
+              <div><div class="tl-title">${s.label}</div><div class="tl-date">${s.date? fmtDate(s.date): 'لم يحدث بعد'}</div></div>
+            </li>`).join('')}
+        </ul>
+      </div>
+      <div class="modal-foot" style="flex-wrap:wrap;">
+        ${tailorActions}${hrActions}
+        <button class="btn btn-ghost" id="close-order-detail" style="margin-inline-start:auto;">إغلاق</button>
+      </div>
+    </div>
+  </div>`;
+}
+function bindOrderDetailModal(o){
+  document.querySelectorAll('[data-set-status]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const newStatus = btn.dataset.setStatus;
+      if(newStatus===STATUS.DELIVERED && o.status!==STATUS.DONE){ toast('لا يمكن تسجيل التسليم قبل إنجاز الطلب','err'); return; }
+      o.status = newStatus;
+      const today = todayISO();
+      if(newStatus===STATUS.RECEIVED) o.receivedDate = today;
+      if(newStatus===STATUS.PROGRESS) o.progressDate = today;
+      if(newStatus===STATUS.DONE){
+        o.completedDate = today;
+        addNotification(`تم إنجاز طلب يونيفورم الموظف ${o.employeeName}، والطلب جاهز للتسليم (#${o.code}).`);
+      }
+      if(newStatus===STATUS.DELIVERED){
+        o.deliveredDate = today;
+        const emp = STATE.employees.find(e=>e.id===o.employeeId);
+        if(emp){
+          emp.lastIssueDate = today;
+          emp.nextDueDate = addDays(today, STATE.settings.eligibilityDays);
+          persist('employees');
+        }
+        addNotification(`تم تسجيل تسليم اليونيفورم للموظف ${o.employeeName} بتاريخ ${fmtDate(today)}.`);
+      }
+      if(newStatus===STATUS.REJECTED){
+        addNotification(`تم تحديد طلب الموظف ${o.employeeName} كمرفوض / يحتاج تعديل (#${o.code}).`);
+      }
+      persist('orders');
+      addAudit('تغيير حالة طلب', `#${o.code} — ${o.employeeName} → ${newStatus}`);
+      toast('تم تحديث حالة الطلب');
+      closeModal();
+    };
+  });
+  document.getElementById('close-order-detail').onclick = closeModal;
+}
+
+/* ---- User modal (admin add user) ---- */
+function userModal(){
+  return `
+  <div class="overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-head"><h3>إضافة مستخدم جديد</h3><button class="modal-close" id="modal-close">✕</button></div>
+      <div class="modal-body">
+        <div class="field"><label>الاسم الكامل</label><input id="u-name"></div>
+        <div class="field"><label>اسم المستخدم</label><input id="u-username"></div>
+        <div class="field"><label>كلمة المرور</label><input id="u-password" type="text"></div>
+        <div class="field"><label>الدور</label>
+          <select id="u-role"><option value="hr">الموارد البشرية</option><option value="tailor">الخياط</option><option value="admin">مدير النظام</option></select>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-primary" id="save-user">إضافة المستخدم</button>
+        <button class="btn btn-ghost" id="cancel-user">إلغاء</button>
+      </div>
+    </div>
+  </div>`;
+}
+function bindUserModal(){
+  document.getElementById('save-user').onclick = ()=>{
+    const name=val('u-name'), username=val('u-username'), password=val('u-password'), role=document.getElementById('u-role').value;
+    if(!name||!username||!password){ toast('الرجاء تعبئة جميع الحقول','err'); return; }
+    if(STATE.users.some(u=>u.username===username)){ toast('اسم المستخدم مستخدم مسبقاً','err'); return; }
+    STATE.users.push({id:uid('u'), name, username, password, role});
+    persist('users'); addAudit('إضافة مستخدم', `${name} (${ROLE_LABEL[role]})`);
+    toast('تمت إضافة المستخدم'); closeModal();
+  };
+  document.getElementById('cancel-user').onclick = closeModal;
+}
+
+/* ---- generic modal bind ---- */
+function bindModal(){
+  if(!STATE.modal) return;
+  const closeBtn = document.getElementById('modal-close');
+  if(closeBtn) closeBtn.onclick = closeModal;
+  const overlay = document.getElementById('modal-overlay');
+  if(overlay) overlay.addEventListener('click', (e)=>{ if(e.target.id==='modal-overlay') closeModal(); });
+
+  if(STATE.modal.type==='employee') bindEmployeeModal(STATE.modal.emp);
+  if(STATE.modal.type==='order') bindOrderModal();
+  if(STATE.modal.type==='orderDetail') bindOrderDetailModal(STATE.modal.order);
+  if(STATE.modal.type==='user') bindUserModal();
+}
+
+/* =========================================================
+   INIT
+========================================================= */
+(async function init(){
+  document.getElementById('app').innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#8B97A3;">جارِ التحميل...</div>`;
+  await checkStorageHealth();
+  await loadAll();
+  render();
+  setInterval(syncFromStorage, 4000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) syncFromStorage(); });
+  window.addEventListener('focus', syncFromStorage);
+})();
+</script>
+</body>
+</html>
