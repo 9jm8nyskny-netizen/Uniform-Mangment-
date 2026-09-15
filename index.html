@@ -71,7 +71,10 @@
     box-shadow:0 30px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.04);
     position:relative;
   }
-  @media (max-width:760px){ .login-card{grid-template-columns:1fr;} .login-side{display:none;} }
+  @media (max-width:760px){
+    .login-card{grid-template-columns:1fr;max-width:460px;}
+    .login-side{display:none;}
+  }
   @media (max-width:480px){
     .login-wrap{padding:0;}
     .login-card{border-radius:0;min-height:100vh;min-height:100dvh;box-shadow:none;display:flex;align-items:center;}
@@ -107,6 +110,17 @@
     width:6px;height:6px;border-radius:50%;background:var(--gold-600);margin-top:7px;flex:none;
   }
   .login-form{padding:48px 44px;display:flex;flex-direction:column;justify-content:center;}
+  .login-form-brand{
+    display:none;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:22px;border-bottom:1px solid var(--border);
+  }
+  .login-form-brand .mark{
+    width:42px;height:42px;border-radius:11px;background:var(--gold-600);flex:none;
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#2b2208;font-size:17px;
+    box-shadow:0 6px 16px rgba(180,145,58,.3);
+  }
+  .login-form-brand .brand-text b{display:block;font-size:14.5px;color:var(--navy-900);font-weight:800;line-height:1.35;}
+  .login-form-brand .brand-text span{display:block;font-size:11.5px;color:var(--text-600);margin-top:2px;}
+  @media (max-width:760px){ .login-form-brand{display:flex;} }
   .login-form .eyebrow{color:var(--gold-600);font-size:12px;font-weight:700;letter-spacing:.3px;margin-bottom:8px;}
   .login-form h2{margin:0 0 6px;font-size:24px;font-weight:800;color:var(--navy-900);}
   .login-form .sub{color:var(--text-600);font-size:13.5px;margin-bottom:28px;}
@@ -117,6 +131,27 @@
     background:#FBFBFC;outline:none;transition:border-color .15s, box-shadow .15s;
   }
   .field input:focus,.field select:focus{border-color:var(--navy-700);background:#fff;box-shadow:0 0 0 3px rgba(22,50,79,.08);}
+  /* Icon-wrapped inputs (login / portal forms) */
+  .io-field{
+    display:flex;align-items:center;gap:8px;width:100%;
+    border:1.5px solid var(--border);border-radius:9px;background:#FBFBFC;padding:0 14px;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .io-field:focus-within{border-color:var(--navy-700);background:#fff;box-shadow:0 0 0 3px rgba(22,50,79,.08);}
+  .field .io-field input{
+    border:none;background:transparent;padding:12px 0;flex:1;min-width:0;width:auto;
+  }
+  .field .io-field input:focus{border:none;background:transparent;box-shadow:none;}
+  .io-field .io-icon{color:var(--text-400);font-size:15px;flex:none;line-height:1;}
+  .io-field .pass-toggle{
+    border:none;background:none;color:var(--text-400);font-size:15px;line-height:1;
+    padding:8px 2px;cursor:pointer;flex:none;border-radius:6px;
+  }
+  .io-field .pass-toggle:hover{color:var(--navy-800);}
+  .login-secure-note{
+    display:flex;align-items:center;gap:6px;justify-content:center;margin-top:22px;
+    font-size:11.5px;color:var(--text-400);
+  }
   .btn{
     border:none;border-radius:9px;padding:12px 16px;font-weight:700;font-size:13.5px;
     display:inline-flex;align-items:center;gap:6px;justify-content:center;transition:filter .12s, transform .05s;
@@ -136,7 +171,12 @@
     .btn{padding:11px 16px;}
     .btn-sm{padding:9px 12px;font-size:12.5px;}
   }
-  .err{color:var(--red-700);font-size:12.5px;margin-top:10px;min-height:16px;}
+  .err{color:var(--red-700);font-size:12.5px;margin-top:2px;min-height:0;}
+  .err:not(:empty){
+    background:var(--red-100);border-radius:8px;padding:10px 12px;margin-top:14px;font-weight:600;
+    display:flex;align-items:center;gap:7px;line-height:1.5;
+  }
+  .err:not(:empty)::before{content:'⚠';flex:none;font-size:13px;}
   .portal-link{
     display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:24px;
     padding:12px 14px;border-radius:9px;border:1px solid var(--border);background:#FBFBFC;
@@ -529,17 +569,35 @@ function loginView(){
         </ul>
       </div>
       <div class="login-form">
+        <div class="login-form-brand">
+          <div class="mark">ي</div>
+          <div class="brand-text"><b>نظام إدارة اليونيفورم</b><span>إدارة الصرف والمتابعة</span></div>
+        </div>
         <div class="eyebrow">مرحبًا بعودتك</div>
         <h2>تسجيل الدخول</h2>
         <div class="sub">أدخل بيانات حسابك للمتابعة إلى لوحة التحكم</div>
-        <div class="field"><label>اسم المستخدم</label><input id="li-user" placeholder="اسم المستخدم" autocomplete="username"></div>
-        <div class="field"><label>كلمة المرور</label><input id="li-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password"></div>
+        <div class="field">
+          <label>اسم المستخدم</label>
+          <div class="io-field">
+            <span class="io-icon">👤</span>
+            <input id="li-user" placeholder="اسم المستخدم" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="field">
+          <label>كلمة المرور</label>
+          <div class="io-field">
+            <span class="io-icon">🔒</span>
+            <input id="li-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password">
+            <button type="button" class="pass-toggle" id="li-pass-toggle" aria-label="إظهار كلمة المرور">👁</button>
+          </div>
+        </div>
         <button class="btn btn-primary btn-block" id="li-submit">دخول</button>
         <div class="err" id="li-err"></div>
         <a href="#" class="portal-link" id="li-employee-portal">
           <span>الاستعلام عن حالة اليونيفورم كموظف</span><span>←</span>
         </a>
         ${!FIREBASE_CONNECTED? `<div class="storage-warn-login">⚠ لا يوجد اتصال حالي بقاعدة بيانات Firebase — تحقق من الإنترنت أو إعدادات المشروع.</div>` : ''}
+        <div class="login-secure-note"><span>🔒</span><span>اتصال مشفّر عبر HTTPS</span></div>
       </div>
     </div>
   </div>`;
@@ -548,7 +606,16 @@ function loginView(){
 function bindLogin(){
   document.getElementById('li-submit').onclick = doLogin;
   document.getElementById('li-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  document.getElementById('li-user').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('li-pass').focus(); });
   document.getElementById('li-employee-portal').onclick = (e)=>{ e.preventDefault(); STATE.employeePortal = true; renderEmployeePortal(); };
+  const passToggle = document.getElementById('li-pass-toggle');
+  const passInput = document.getElementById('li-pass');
+  passToggle.onclick = ()=>{
+    const showing = passInput.type === 'text';
+    passInput.type = showing ? 'password' : 'text';
+    passToggle.textContent = showing ? '👁' : '🙈';
+    passToggle.setAttribute('aria-label', showing ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور');
+  };
 }
 function doLogin(){
   const u = document.getElementById('li-user').value.trim();
@@ -571,22 +638,39 @@ function renderEmployeePortal(){
   const root = document.getElementById('app');
   root.innerHTML = `
   <div class="login-wrap">
-    <div class="login-card" style="grid-template-columns:1fr;max-width:480px;">
+    <div class="login-card" style="grid-template-columns:1fr;max-width:460px;">
       <div class="login-form">
+        <div class="login-form-brand" style="display:flex;">
+          <div class="mark">ي</div>
+          <div class="brand-text"><b>نظام إدارة اليونيفورم</b><span>الاستعلام الذاتي للموظف</span></div>
+        </div>
         <h2>حالة اليونيفورم</h2>
         <div class="sub">أدخل الرقم الوظيفي ورقم الهوية للتحقق من حالتك</div>
-        <div class="field"><label>الرقم الوظيفي</label><input id="ep-num" placeholder="مثال: 1023"></div>
-        <div class="field"><label>رقم الهوية / الإقامة</label><input id="ep-id" placeholder="10 أرقام"></div>
+        <div class="field">
+          <label>الرقم الوظيفي</label>
+          <div class="io-field">
+            <span class="io-icon">🆔</span>
+            <input id="ep-num" placeholder="مثال: 1023" inputmode="numeric">
+          </div>
+        </div>
+        <div class="field">
+          <label>رقم الهوية / الإقامة</label>
+          <div class="io-field">
+            <span class="io-icon">🪪</span>
+            <input id="ep-id" placeholder="10 أرقام" inputmode="numeric">
+          </div>
+        </div>
         <button class="btn btn-primary btn-block" id="ep-submit">عرض الحالة</button>
         <div class="err" id="ep-err"></div>
         <div id="ep-result"></div>
-        <div style="text-align:center;margin-top:16px;">
+        <div style="text-align:center;margin-top:18px;">
           <button class="link-btn" id="ep-back">← العودة لتسجيل الدخول</button>
         </div>
       </div>
     </div>
   </div>`;
   document.getElementById('ep-back').onclick = ()=>{ STATE.employeePortal=false; render(); };
+  document.getElementById('ep-id').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('ep-submit').click(); });
   document.getElementById('ep-submit').onclick = ()=>{
     const num = document.getElementById('ep-num').value.trim();
     const nid = document.getElementById('ep-id').value.trim();
