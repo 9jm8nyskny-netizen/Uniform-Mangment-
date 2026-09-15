@@ -66,52 +66,19 @@
     padding-bottom:max(20px, env(safe-area-inset-bottom));
   }
   .login-card{
-    background:var(--surface);width:100%;max-width:960px;border-radius:18px;
-    overflow:hidden;display:grid;grid-template-columns:1.05fr 1fr;
+    background:var(--surface);width:100%;max-width:440px;border-radius:18px;
+    overflow:hidden;
     box-shadow:0 30px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.04);
     position:relative;
-  }
-  @media (max-width:760px){
-    .login-card{grid-template-columns:1fr;max-width:460px;}
-    .login-side{display:none;}
   }
   @media (max-width:480px){
     .login-wrap{padding:0;}
     .login-card{border-radius:0;min-height:100vh;min-height:100dvh;box-shadow:none;display:flex;align-items:center;}
     .login-form{padding:32px 22px;width:100%;}
   }
-  .login-side{
-    background:
-      radial-gradient(520px 320px at 85% -10%, rgba(180,145,58,.16), transparent 60%),
-      radial-gradient(circle at 20% 15%, #1c3a5a, var(--navy-900) 70%);
-    color:#fff;padding:48px 40px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;
-  }
-  .login-side::after{
-    content:'';position:absolute;inset:auto -40px -60px auto;width:220px;height:220px;border-radius:50%;
-    background:radial-gradient(circle, rgba(180,145,58,.14), transparent 70%);
-  }
-  .stitch{
-    border:none;border-top:2px dashed rgba(180,145,58,.55);width:54px;margin:18px 0 22px;
-  }
-  .login-side h1{font-size:26px;margin:0 0 12px;font-weight:800;line-height:1.35;letter-spacing:.2px;}
-  .login-side p{color:#C3D0DE;font-size:13.5px;line-height:1.75;margin:0;max-width:340px;}
-  .login-side .mark{
-    width:48px;height:48px;border-radius:12px;background:var(--gold-600);
-    display:flex;align-items:center;justify-content:center;font-weight:800;color:#2b2208;font-size:19px;
-    box-shadow:0 6px 18px rgba(180,145,58,.35);
-  }
-  .feature-list{list-style:none;padding:0;margin:0;position:relative;z-index:1;}
-  .feature-list li{
-    display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid rgba(255,255,255,.08);
-    color:#C3D0DE;font-size:13.5px;line-height:1.6;
-  }
-  .feature-list li:first-child{border-top:none;}
-  .feature-list .dot{
-    width:6px;height:6px;border-radius:50%;background:var(--gold-600);margin-top:7px;flex:none;
-  }
-  .login-form{padding:48px 44px;display:flex;flex-direction:column;justify-content:center;}
+  .login-form{padding:44px 40px;display:flex;flex-direction:column;justify-content:center;}
   .login-form-brand{
-    display:none;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:22px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:22px;border-bottom:1px solid var(--border);
   }
   .login-form-brand .mark{
     width:42px;height:42px;border-radius:11px;background:var(--gold-600);flex:none;
@@ -120,7 +87,6 @@
   }
   .login-form-brand .brand-text b{display:block;font-size:14.5px;color:var(--navy-900);font-weight:800;line-height:1.35;}
   .login-form-brand .brand-text span{display:block;font-size:11.5px;color:var(--text-600);margin-top:2px;}
-  @media (max-width:760px){ .login-form-brand{display:flex;} }
   .login-form .eyebrow{color:var(--gold-600);font-size:12px;font-weight:700;letter-spacing:.3px;margin-bottom:8px;}
   .login-form h2{margin:0 0 6px;font-size:24px;font-weight:800;color:var(--navy-900);}
   .login-form .sub{color:var(--text-600);font-size:13.5px;margin-bottom:28px;}
@@ -554,20 +520,6 @@ function loginView(){
   return `
   <div class="login-wrap">
     <div class="login-card">
-      <div class="login-side">
-        <div>
-          <div class="mark">ي</div>
-          <hr class="stitch">
-          <h1>نظام إدارة<br>وصرف اليونيفورم</h1>
-          <p>ربط كامل بين الموارد البشرية والخياط، مع متابعة دقيقة لاستحقاق كل موظف واحتساب تلقائي لدورة السنة.</p>
-        </div>
-        <ul class="feature-list">
-          <li><span class="dot"></span>متابعة حالة الطلب من الإنشاء حتى التسليم</li>
-          <li><span class="dot"></span>منع تكرار الصرف قبل مرور سنة كاملة</li>
-          <li><span class="dot"></span>لوحات تحكم منفصلة للموارد البشرية والخياط</li>
-          <li><span class="dot"></span>سجل عمليات كامل لكل تغيير</li>
-        </ul>
-      </div>
       <div class="login-form">
         <div class="login-form-brand">
           <div class="mark">ي</div>
@@ -638,7 +590,7 @@ function renderEmployeePortal(){
   const root = document.getElementById('app');
   root.innerHTML = `
   <div class="login-wrap">
-    <div class="login-card" style="grid-template-columns:1fr;max-width:460px;">
+    <div class="login-card">
       <div class="login-form">
         <div class="login-form-brand" style="display:flex;">
           <div class="mark">ي</div>
