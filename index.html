@@ -436,7 +436,7 @@ function daysBetween(a,b){ return Math.ceil((new Date(a) - new Date(b)) / 864000
 ========================================================= */
 let STATE = {
   users:[], employees:[], orders:[], notifications:[], auditLogs:[], branches:[], jobTitles:[], settings:{price:90, eligibilityDays:365},
-  currentUser:null, view:'dashboard', sidebarOpen:false, toasts:[], refreshing:false, editingJobTitleIndex:null
+  currentUser:null, view:'dashboard', sidebarOpen:false, toasts:[], refreshing:false, editingJobTitleIndex:null, editingTailorBalance:false
 };
 
 const KEY_MAP = {employees:'uf-employees', orders:'uf-orders', notifications:'uf-notifications', auditLogs:'uf-audit', users:'uf-users', branches:'uf-branches', jobTitles:'uf-jobtitles', settings:'uf-settings'};
@@ -467,7 +467,7 @@ function attachRealtimeListeners(){
             val = ['موظف مبيعات','مشرف فرع','أخصائي موارد بشرية','فني صيانة','محاسب','موظف استقبال'];
             dbRef(dbKey).set(val);
           } else if(stateKey==='settings'){
-            val = {price:90, eligibilityDays:365};
+            val = {price:90, eligibilityDays:365, tailorBalance:0};
             dbRef(dbKey).set(val);
           } else {
             val = [];
@@ -878,7 +878,6 @@ function dashboardView(){
   const delivered = countByStatus(STATUS.DELIVERED);
   const price = STATE.settings.price;
   const totalCost = delivered * price;
-  const totalOrderValue = orders.length * price;
 
   const cards = [
     {l:'إجمالي الموظفين', v: total, c:''},
@@ -889,12 +888,12 @@ function dashboardView(){
     {l:'مستحقون لليونيفورم', v: eligible, c:'green'},
     {l:'غير مستحقين حاليًا', v: notEligible, c:'red'},
     {l:'إجمالي تكلفة اليونيفورم', v: totalCost.toLocaleString('ar')+' ريال', c:'gold'},
-    {l:'إجمالي قيمة طلبات الخياط', v: totalOrderValue.toLocaleString('ar')+' ريال', c:''},
   ];
   const recent = [...orders].sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate)).slice(0,6);
   return `
     <div class="stat-grid">
       ${cards.map(c=>`<div class="stat-card"><div class="label">${c.l}</div><div class="value ${c.c}">${c.v}</div></div>`).join('')}
+      ${tailorBalanceCard()}
     </div>
     <div class="panel">
       <div class="panel-head"><h3>أحدث الطلبات</h3></div>
@@ -907,7 +906,64 @@ function dashboardView(){
     </div>
   `;
 }
-function bindDashboard(){}
+
+/* ---- بطاقة إجمالي قيمة طلبات الخياط: قابلة للتعديل والتصفية للأدمن ---- */
+function tailorBalanceCard(){
+  const isAdmin = STATE.currentUser.role==='admin';
+  const balance = Number(STATE.settings.tailorBalance || 0);
+
+  if(isAdmin && STATE.editingTailorBalance){
+    return `<div class="stat-card">
+      <div class="label">إجمالي قيمة طلبات الخياط</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">
+        <input id="tb-input" type="number" value="${balance}" style="width:100%;padding:7px 9px;border:1.5px solid var(--navy-700);border-radius:7px;font-size:15px;font-weight:700;">
+        <button class="icon-btn" id="tb-save" title="حفظ" style="flex:none;">✓</button>
+        <button class="icon-btn" id="tb-cancel" title="إلغاء" style="flex:none;">×</button>
+      </div>
+    </div>`;
+  }
+
+  return `<div class="stat-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+      <div class="label" style="margin-bottom:0;">إجمالي قيمة طلبات الخياط</div>
+      ${isAdmin? `<button class="icon-btn" id="tb-edit" title="تعديل الإجمالي" style="width:24px;height:24px;font-size:11px;">✎</button>` : ''}
+    </div>
+    <div class="value" style="margin-top:8px;">${balance.toLocaleString('ar')} ريال</div>
+    ${isAdmin? `<button class="btn btn-danger btn-sm" id="tb-settle" style="margin-top:10px;width:100%;">✓ تم الحساب (تصفير)</button>` : ''}
+  </div>`;
+}
+
+function bindDashboard(){
+  const editBtn = document.getElementById('tb-edit');
+  if(editBtn) editBtn.onclick = ()=>{ STATE.editingTailorBalance = true; render(); };
+  const cancelBtn = document.getElementById('tb-cancel');
+  if(cancelBtn) cancelBtn.onclick = ()=>{ STATE.editingTailorBalance = false; render(); };
+  const saveBtn = document.getElementById('tb-save');
+  if(saveBtn) saveBtn.onclick = ()=>{
+    const input = document.getElementById('tb-input');
+    const newVal = Number(input.value);
+    if(isNaN(newVal) || newVal < 0){ toast('الرجاء إدخال رقم صحيح أكبر من أو يساوي صفر','err'); return; }
+    const oldVal = Number(STATE.settings.tailorBalance || 0);
+    STATE.settings.tailorBalance = newVal;
+    persist('settings');
+    if(newVal!==oldVal){ addAudit('تعديل إجمالي قيمة طلبات الخياط', `${oldVal.toLocaleString('ar')} ريال ← ${newVal.toLocaleString('ar')} ريال`); }
+    STATE.editingTailorBalance = false;
+    toast('تم حفظ الإجمالي');
+    render();
+  };
+  const settleBtn = document.getElementById('tb-settle');
+  if(settleBtn) settleBtn.onclick = ()=>{
+    const current = Number(STATE.settings.tailorBalance || 0);
+    if(current<=0){ toast('لا يوجد رصيد حالياً لتصفيته','err'); return; }
+    if(confirm(`هل أنت متأكد من تصفية حساب الخياط بالكامل؟\n\nسيتم اعتبار مبلغ ${current.toLocaleString('ar')} ريال مدفوعاً بالكامل، وسيعود الإجمالي إلى صفر. لا يمكن التراجع عن هذا الإجراء.`)){
+      STATE.settings.tailorBalance = 0;
+      persist('settings');
+      addAudit('تصفية حساب الخياط', `تمت تصفية مبلغ ${current.toLocaleString('ar')} ريال بالكامل`);
+      toast('تم تصفية حساب الخياط بنجاح');
+      render();
+    }
+  };
+}
 
 /* =========================================================
    EMPLOYEES
@@ -1125,6 +1181,8 @@ function deleteOrder(orderId){
   if(confirm(`حذف الطلب #${o.code} الخاص بالموظف "${o.employeeName}"؟ لا يمكن التراجع عن هذا الإجراء.`)){
     STATE.orders = STATE.orders.filter(x=>x.id!==orderId);
     persist('orders');
+    STATE.settings.tailorBalance = Math.max(0, Number(STATE.settings.tailorBalance||0) - Number(o.price||0));
+    persist('settings');
     addAudit('حذف طلب يونيفورم', `#${o.code} — ${o.employeeName}`);
     toast('تم حذف الطلب');
     render();
@@ -1375,7 +1433,11 @@ function employeeModal(emp){
           <div class="field"><label>رقم الهوية / الإقامة</label><input id="f-nid" value="${emp?.nationalId||''}"></div>
           <div class="field"><label>الفرع</label><select id="f-branch">${STATE.branches.map(b=>`<option ${emp?.branch===b?'selected':''}>${b}</option>`).join('')}</select></div>
           <div class="field"><label>المسمى الوظيفي</label>
-            <select id="f-title">${titles.map(t=>`<option ${emp?.jobTitle===t?'selected':''}>${t}</option>`).join('')}</select>
+            <select id="f-title">
+              ${titles.map(t=>`<option ${emp?.jobTitle===t?'selected':''}>${t}</option>`).join('')}
+              <option value="__new__">+ إضافة مسمى وظيفي جديد</option>
+            </select>
+            <input id="f-title-new" placeholder="اكتب المسمى الوظيفي الجديد" style="display:none;margin-top:8px;">
           </div>
           <div class="field"><label>المقاس</label>
             <select id="f-size">${['S','M','L','XL','XXL','XXXL'].map(s=>`<option ${emp?.size===s?'selected':''}>${s}</option>`).join('')}</select>
@@ -1399,10 +1461,31 @@ function employeeModal(emp){
   </div>`;
 }
 function bindEmployeeModal(emp){
+  const titleSel = document.getElementById('f-title');
+  const titleNewInput = document.getElementById('f-title-new');
+  const syncTitleInput = ()=>{ titleNewInput.style.display = titleSel.value==='__new__' ? 'block' : 'none'; };
+  titleSel.onchange = syncTitleInput;
+  syncTitleInput();
+
   document.getElementById('save-emp').onclick = ()=>{
-    const name=val('f-name'), num=val('f-num'), nid=val('f-nid'), branch=val('f-branch'), title=val('f-title'), size=val('f-size');
+    const name=val('f-name'), num=val('f-num'), nid=val('f-nid'), branch=val('f-branch'), size=val('f-size');
     if(!name||!num||!nid){ toast('الرجاء تعبئة الاسم والرقم الوظيفي والهوية','err'); return; }
     if(!emp && STATE.employees.some(e=>e.employeeNumber===num)){ toast('الرقم الوظيفي مستخدم مسبقاً','err'); return; }
+
+    let title = titleSel.value;
+    if(title==='__new__'){
+      const newTitle = titleNewInput.value.trim();
+      if(!newTitle){ toast('الرجاء كتابة المسمى الوظيفي الجديد','err'); return; }
+      if(STATE.jobTitles.includes(newTitle)){
+        title = newTitle; // موجود أصلاً بنفس الاسم، استخدمه مباشرة دون تكرار
+      } else {
+        STATE.jobTitles.push(newTitle);
+        persist('jobTitles');
+        addAudit('إضافة مسمى وظيفي', `${newTitle} (تلقائياً عند إضافة/تعديل موظف)`);
+        title = newTitle;
+      }
+    }
+
     const isAdmin = STATE.currentUser.role==='admin';
     const lastIssueEl = document.getElementById('f-last-issue');
     const nextDueEl = document.getElementById('f-next-due');
@@ -1525,6 +1608,8 @@ function bindOrderModal(){
     };
     STATE.orders.push(order);
     persist('orders');
+    STATE.settings.tailorBalance = Number(STATE.settings.tailorBalance||0) + Number(order.price||0);
+    persist('settings');
     addAudit('إنشاء طلب يونيفورم', `${emp.name} — طلب #${order.code}` + (exceptionReason? ` (استثناء: ${exceptionReason})`:''));
     addNotification(`تم إرسال طلب يونيفورم جديد إلى الخياط — الموظف ${emp.name} (#${order.code}).`);
     toast('تم إرسال الطلب إلى الخياط');
@@ -1572,7 +1657,13 @@ function bindOrderEditModal(o){
     if(!type){ toast('الرجاء تعبئة نوع اليونيفورم','err'); return; }
     if(!price || price<=0){ toast('السعر يجب أن يكون أكبر من صفر','err'); return; }
     const oldStatus = o.status;
+    const oldPrice = Number(o.price||0);
     Object.assign(o, {uniformType:type, size, price, status});
+    const priceDiff = price - oldPrice;
+    if(priceDiff!==0){
+      STATE.settings.tailorBalance = Math.max(0, Number(STATE.settings.tailorBalance||0) + priceDiff);
+      persist('settings');
+    }
     if(status!==oldStatus){
       const today = todayISO();
       if(status===STATUS.DELIVERED && !o.deliveredDate){
