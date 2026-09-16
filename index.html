@@ -1154,6 +1154,15 @@ function employeeModal(emp){
             <select id="f-size">${['S','M','L','XL','XXL','XXXL'].map(s=>`<option ${emp?.size===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
         </div>
+        ${emp && STATE.currentUser.role==='admin' ? `
+        <div style="margin-top:6px;padding-top:16px;border-top:1px dashed var(--border);">
+          <div class="helper" style="margin:0 0 10px;font-weight:700;color:var(--navy-800);">تعديل استحقاق اليونيفورم (صلاحية المدير)</div>
+          <div class="grid-2">
+            <div class="field"><label>تاريخ آخر صرف</label><input id="f-last-issue" type="date" value="${emp.lastIssueDate||''}"></div>
+            <div class="field"><label>تاريخ الاستحقاق القادم</label><input id="f-next-due" type="date" value="${emp.nextDueDate||''}"></div>
+          </div>
+          <div class="helper">تعديل هذين التاريخين يغيّر مباشرة موعد استحقاق الموظف لصرف يونيفورم جديد. اترك الحقلين فارغين لجعل الموظف مستحقاً فوراً.</div>
+        </div>` : ''}
       </div>
       <div class="modal-foot">
         <button class="btn btn-primary" id="save-emp">${emp?'حفظ التعديلات':'إضافة الموظف'}</button>
@@ -1167,8 +1176,21 @@ function bindEmployeeModal(emp){
     const name=val('f-name'), num=val('f-num'), nid=val('f-nid'), branch=val('f-branch'), title=val('f-title'), size=val('f-size');
     if(!name||!num||!nid){ toast('الرجاء تعبئة الاسم والرقم الوظيفي والهوية','err'); return; }
     if(!emp && STATE.employees.some(e=>e.employeeNumber===num)){ toast('الرقم الوظيفي مستخدم مسبقاً','err'); return; }
+    const isAdmin = STATE.currentUser.role==='admin';
+    const lastIssueEl = document.getElementById('f-last-issue');
+    const nextDueEl = document.getElementById('f-next-due');
     if(emp){
+      const oldLast = emp.lastIssueDate, oldNext = emp.nextDueDate;
       Object.assign(emp, {name, employeeNumber:num, nationalId:nid, branch, jobTitle:title, size});
+      if(isAdmin && lastIssueEl && nextDueEl){
+        const newLast = lastIssueEl.value || null;
+        const newNext = nextDueEl.value || null;
+        emp.lastIssueDate = newLast;
+        emp.nextDueDate = newNext;
+        if(newLast!==oldLast || newNext!==oldNext){
+          addAudit('تعديل استحقاق يونيفورم موظف', `${name} — آخر صرف: ${fmtDate(newLast)}، الاستحقاق القادم: ${fmtDate(newNext)}`);
+        }
+      }
       addAudit('تعديل بيانات موظف', name);
       toast('تم حفظ التعديلات');
     } else {
