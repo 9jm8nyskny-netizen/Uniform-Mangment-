@@ -435,11 +435,11 @@ function daysBetween(a,b){ return Math.ceil((new Date(a) - new Date(b)) / 864000
    APP STATE
 ========================================================= */
 let STATE = {
-  users:[], employees:[], orders:[], notifications:[], auditLogs:[], branches:[], settings:{price:90, eligibilityDays:365},
-  currentUser:null, view:'dashboard', sidebarOpen:false, toasts:[], refreshing:false
+  users:[], employees:[], orders:[], notifications:[], auditLogs:[], branches:[], jobTitles:[], settings:{price:90, eligibilityDays:365},
+  currentUser:null, view:'dashboard', sidebarOpen:false, toasts:[], refreshing:false, editingJobTitleIndex:null
 };
 
-const KEY_MAP = {employees:'uf-employees', orders:'uf-orders', notifications:'uf-notifications', auditLogs:'uf-audit', users:'uf-users', branches:'uf-branches', settings:'uf-settings'};
+const KEY_MAP = {employees:'uf-employees', orders:'uf-orders', notifications:'uf-notifications', auditLogs:'uf-audit', users:'uf-users', branches:'uf-branches', jobTitles:'uf-jobtitles', settings:'uf-settings'};
 
 /* Attaches a live listener per data type. Firebase fires the callback
    immediately with the current value, then again in real time whenever
@@ -462,6 +462,9 @@ function attachRealtimeListeners(){
             dbRef(dbKey).set(val);
           } else if(stateKey==='branches'){
             val = ['الفرع الرئيسي','فرع جدة','فرع الرياض','فرع الدمام'];
+            dbRef(dbKey).set(val);
+          } else if(stateKey==='jobTitles'){
+            val = ['موظف مبيعات','مشرف فرع','أخصائي موارد بشرية','فني صيانة','محاسب','موظف استقبال'];
             dbRef(dbKey).set(val);
           } else if(stateKey==='settings'){
             val = {price:90, eligibilityDays:365};
@@ -1190,6 +1193,32 @@ function settingsView(){
         <button class="btn btn-ghost btn-sm" id="add-branch-btn">إضافة</button>
       </div>
     </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>المسميات الوظيفية</h3></div>
+    <div class="panel-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        ${STATE.jobTitles.map((t,i)=>{
+          if(STATE.editingJobTitleIndex===i){
+            return `<span class="tag-pill" style="display:inline-flex;align-items:center;gap:6px;padding:3px 6px;">
+              <input id="edit-jobtitle-input" value="${t}" style="border:1px solid var(--navy-700);border-radius:5px;padding:3px 8px;font-size:12px;width:150px;">
+              <button data-save-jobtitle="${i}" title="حفظ" style="border:none;background:none;color:var(--green-700);cursor:pointer;font-size:14px;font-weight:700;">✓</button>
+              <button data-cancel-jobtitle title="إلغاء" style="border:none;background:none;color:var(--text-600);cursor:pointer;font-size:14px;">×</button>
+            </span>`;
+          }
+          return `<span class="tag-pill" style="display:inline-flex;align-items:center;gap:7px;">
+            ${t}
+            <button data-edit-jobtitle="${i}" title="تعديل" style="border:none;background:none;color:var(--navy-700);cursor:pointer;font-size:11.5px;padding:0;">✎</button>
+            <button data-del-jobtitle="${i}" title="حذف" style="border:none;background:none;color:var(--red-700);cursor:pointer;font-size:13px;padding:0;">×</button>
+          </span>`;
+        }).join('') || `<span class="helper">لا توجد مسميات وظيفية بعد — أضف أول مسمى بالأسفل.</span>`}
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input id="new-jobtitle" placeholder="مسمى وظيفي جديد" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:6px;">
+        <button class="btn btn-ghost btn-sm" id="add-jobtitle-btn">إضافة</button>
+      </div>
+      <div class="helper">تعديل مسمى موجود يحدّث تلقائياً كل الموظفين المسجّلين تحته إلى الاسم الجديد.</div>
+    </div>
   </div>`;
 }
 function bindSettings(){
@@ -1210,6 +1239,60 @@ function bindSettings(){
     if(!v) return;
     if(!STATE.branches.includes(v)) STATE.branches.push(v);
     persist('branches'); render();
+  };
+
+  /* ---- المسميات الوظيفية ---- */
+  document.querySelectorAll('[data-edit-jobtitle]').forEach(el=> el.onclick = ()=>{
+    STATE.editingJobTitleIndex = Number(el.dataset.editJobtitle);
+    render();
+  });
+  document.querySelectorAll('[data-cancel-jobtitle]').forEach(el=> el.onclick = ()=>{
+    STATE.editingJobTitleIndex = null;
+    render();
+  });
+  document.querySelectorAll('[data-save-jobtitle]').forEach(el=> el.onclick = ()=>{
+    const i = Number(el.dataset.saveJobtitle);
+    const oldTitle = STATE.jobTitles[i];
+    const newTitle = document.getElementById('edit-jobtitle-input').value.trim();
+    if(!newTitle){ toast('الرجاء إدخال اسم المسمى الوظيفي','err'); return; }
+    if(newTitle!==oldTitle && STATE.jobTitles.includes(newTitle)){ toast('هذا المسمى موجود مسبقاً','err'); return; }
+    if(newTitle!==oldTitle){
+      STATE.jobTitles[i] = newTitle;
+      let affected = 0;
+      STATE.employees.forEach(e=>{ if(e.jobTitle===oldTitle){ e.jobTitle = newTitle; affected++; } });
+      persist('jobTitles');
+      if(affected>0) persist('employees');
+      addAudit('تعديل مسمى وظيفي', `${oldTitle} ← ${newTitle}` + (affected? ` (تم تحديث ${affected} موظف)`:''));
+      toast('تم تحديث المسمى الوظيفي');
+    }
+    STATE.editingJobTitleIndex = null;
+    render();
+  });
+  document.querySelectorAll('[data-del-jobtitle]').forEach(el=> el.onclick = ()=>{
+    const i = Number(el.dataset.delJobtitle);
+    const title = STATE.jobTitles[i];
+    const usedBy = STATE.employees.filter(e=>e.jobTitle===title).length;
+    const msg = usedBy>0
+      ? `يوجد ${usedBy} موظف مسجّل حالياً بالمسمى "${title}". حذفه من القائمة لن يغيّر بيانات هؤلاء الموظفين، لكنه لن يظهر كخيار عند إضافة موظفين جدد. هل تريد المتابعة؟`
+      : `حذف المسمى الوظيفي "${title}"؟`;
+    if(confirm(msg)){
+      STATE.jobTitles = STATE.jobTitles.filter((t,idx)=> idx!==i);
+      persist('jobTitles');
+      addAudit('حذف مسمى وظيفي', title);
+      toast('تم حذف المسمى الوظيفي');
+      render();
+    }
+  });
+  const addJobTitleBtn = document.getElementById('add-jobtitle-btn');
+  if(addJobTitleBtn) addJobTitleBtn.onclick = ()=>{
+    const v = document.getElementById('new-jobtitle').value.trim();
+    if(!v) return;
+    if(STATE.jobTitles.includes(v)){ toast('هذا المسمى موجود مسبقاً','err'); return; }
+    STATE.jobTitles.push(v);
+    persist('jobTitles');
+    addAudit('إضافة مسمى وظيفي', v);
+    toast('تمت إضافة المسمى الوظيفي');
+    render();
   };
 }
 
@@ -1245,7 +1328,10 @@ function closeModal(){ STATE.modal = null; render(); }
 
 /* ---- Employee modal ---- */
 function employeeModal(emp){
-  const titles = ['موظف مبيعات','مشرف فرع','أخصائي موارد بشرية','فني صيانة','محاسب','موظف استقبال'];
+  // لو المسمى الحالي للموظف حُذف من القائمة الرئيسية لاحقاً، نضيفه هنا مؤقتاً حتى لا يُفقد عند الحفظ
+  const titles = (emp && emp.jobTitle && !STATE.jobTitles.includes(emp.jobTitle))
+    ? [...STATE.jobTitles, emp.jobTitle]
+    : STATE.jobTitles;
   return `
   <div class="overlay" id="modal-overlay">
     <div class="modal">
