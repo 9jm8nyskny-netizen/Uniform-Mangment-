@@ -348,6 +348,17 @@
   .storage-warn-login{
     background:var(--red-100);color:var(--red-700);padding:10px 12px;border-radius:8px;font-size:12px;margin-top:14px;
   }
+
+  /* ---------- Pull-to-refresh ---------- */
+  .ptr-box{
+    height:0;overflow:hidden;flex:none;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    color:var(--navy-700);font-size:13px;font-weight:600;
+  }
+  .ptr-box .ptr-icon{font-size:17px;display:inline-block;line-height:1;}
+  @keyframes ptr-spin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  .spinning{ animation:ptr-spin .8s linear infinite; }
+  #manual-refresh-btn{ font-size:15px; }
 </style>
 </head>
 <body>
@@ -425,7 +436,7 @@ function daysBetween(a,b){ return Math.ceil((new Date(a) - new Date(b)) / 864000
 ========================================================= */
 let STATE = {
   users:[], employees:[], orders:[], notifications:[], auditLogs:[], branches:[], settings:{price:90, eligibilityDays:365},
-  currentUser:null, view:'dashboard', sidebarOpen:false, toasts:[]
+  currentUser:null, view:'dashboard', sidebarOpen:false, toasts:[], refreshing:false
 };
 
 const KEY_MAP = {employees:'uf-employees', orders:'uf-orders', notifications:'uf-notifications', auditLogs:'uf-audit', users:'uf-users', branches:'uf-branches', settings:'uf-settings'};
@@ -698,11 +709,13 @@ function shellView(){
           <h1>${viewTitle(STATE.view)}</h1>
         </div>
         <div class="actions">
-          <span class="bell" id="refresh-btn" title="${FIREBASE_CONNECTED? 'متصل بقاعدة البيانات — التحديثات فورية':'غير متصل'}" style="${FIREBASE_CONNECTED?'':'color:var(--red-700);'}">${FIREBASE_CONNECTED? '🟢':'🔴'}</span>
+          <span class="bell" id="conn-status" title="${FIREBASE_CONNECTED? 'متصل بقاعدة البيانات — التحديثات فورية':'غير متصل'}" style="${FIREBASE_CONNECTED?'':'color:var(--red-700);'}">${FIREBASE_CONNECTED? '🟢':'🔴'}</span>
+          <button class="bell" id="manual-refresh-btn" title="تحديث البيانات الآن">↻</button>
           <button class="bell" id="bell-btn">🔔${unread?`<span class="dot"></span>`:''}</button>
           <div class="avatar">${initials(u.name)}</div>
         </div>
       </div>
+      <div class="ptr-box" id="ptr-box"><span class="ptr-icon">↻</span><span>اسحب للتحديث...</span></div>
       <div class="content" id="content">${viewContent()}</div>
     </div>
   </div>
@@ -722,8 +735,104 @@ function bindShell(){
   if(backdrop) backdrop.onclick = ()=>{ STATE.sidebarOpen = false; render(); };
   const bellBtn = document.getElementById('bell-btn');
   if(bellBtn) bellBtn.onclick = ()=>{ STATE.view='notifications'; render(); };
+  const refreshBtn = document.getElementById('manual-refresh-btn');
+  if(refreshBtn) refreshBtn.onclick = ()=> doManualRefresh();
   bindViewHandlers();
   bindModal();
+}
+
+/* =========================================================
+   REFRESH — manual button + pull-to-refresh gesture
+   Both re-fetch every data type from Firebase once and
+   update the local view immediately, on top of the realtime
+   listeners that already sync changes automatically.
+========================================================= */
+function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+async function doManualRefresh(){
+  if(!STATE.currentUser || STATE.refreshing) return;
+  STATE.refreshing = true;
+
+  const ptrBox = document.getElementById('ptr-box');
+  if(ptrBox){ ptrBox.style.transition='height .15s ease'; ptrBox.style.height='46px'; ptrBox.classList.add('spinning'); }
+  const btn = document.getElementById('manual-refresh-btn');
+  if(btn) btn.classList.add('spinning');
+
+  const startedAt = Date.now();
+  let errored = false;
+  try{
+    const entries = await Promise.all(Object.entries(KEY_MAP).map(async ([stateKey, dbKey])=>{
+      const snap = await dbRef(dbKey).once('value');
+      let val = snap.val();
+      if(val===null || val===undefined){ val = Array.isArray(STATE[stateKey]) ? [] : STATE[stateKey]; }
+      if(Array.isArray(STATE[stateKey]) && !Array.isArray(val) && typeof val==='object'){
+        val = Object.values(val);
+      }
+      return [stateKey, val];
+    }));
+    entries.forEach(([k,v])=>{ STATE[k] = v; });
+  }catch(e){
+    console.error('manual refresh error', e);
+    errored = true;
+  }
+
+  const elapsed = Date.now() - startedAt;
+  if(elapsed < 500) await sleep(500 - elapsed); // keep the spinner visible briefly so the action feels real
+
+  const ptrBox2 = document.getElementById('ptr-box');
+  if(ptrBox2){ ptrBox2.style.transition='height .2s ease'; ptrBox2.style.height='0px'; ptrBox2.classList.remove('spinning'); }
+  const btn2 = document.getElementById('manual-refresh-btn');
+  if(btn2) btn2.classList.remove('spinning');
+  await sleep(200);
+
+  STATE.refreshing = false;
+  render();
+  toast(errored? 'تعذر تحديث البيانات — تحقق من الاتصال بالإنترنت' : 'تم تحديث البيانات بنجاح', errored? 'err':'ok');
+}
+
+/* ---- Pull-to-refresh (touch) ---- */
+const PTR = {startY:0, pulling:false};
+const PTR_TRIGGER = 46;   // px of box growth needed to fire a refresh
+const PTR_MAX = 70;       // max visual growth while dragging
+const PTR_RESISTANCE = 0.5;
+
+function ptrScrollTop(){ return window.scrollY || document.documentElement.scrollTop || 0; }
+
+function bindPullToRefresh(){
+  if(window.__ptrBound) return;
+  window.__ptrBound = true;
+  document.addEventListener('touchstart', onPTRStart, {passive:true});
+  document.addEventListener('touchmove', onPTRMove, {passive:false});
+  document.addEventListener('touchend', onPTREnd, {passive:true});
+  document.addEventListener('touchcancel', onPTREnd, {passive:true});
+}
+function onPTRStart(e){
+  if(!STATE.currentUser || STATE.modal || STATE.sidebarOpen || STATE.refreshing) return;
+  if(ptrScrollTop() > 2) return;
+  PTR.startY = e.touches[0].clientY;
+  PTR.pulling = true;
+}
+function onPTRMove(e){
+  if(!PTR.pulling || STATE.refreshing) return;
+  const dy = e.touches[0].clientY - PTR.startY;
+  if(dy <= 0 || ptrScrollTop() > 2){ PTR.pulling = false; return; }
+  const box = document.getElementById('ptr-box');
+  if(!box) return;
+  e.preventDefault();
+  box.style.transition = 'none';
+  box.style.height = Math.min(dy*PTR_RESISTANCE, PTR_MAX) + 'px';
+}
+function onPTREnd(){
+  if(!PTR.pulling) return;
+  PTR.pulling = false;
+  const box = document.getElementById('ptr-box');
+  const dist = box ? parseFloat(box.style.height||'0') : 0;
+  if(dist >= PTR_TRIGGER){
+    doManualRefresh();
+  } else if(box){
+    box.style.transition = 'height .2s ease';
+    box.style.height = '0px';
+  }
 }
 
 /* =========================================================
@@ -1533,6 +1642,7 @@ function bindModal(){
 (async function init(){
   document.getElementById('app').innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#8B97A3;">جارِ الاتصال بقاعدة البيانات...</div>`;
   await attachRealtimeListeners();
+  bindPullToRefresh();
   render();
 })();
 </script>
