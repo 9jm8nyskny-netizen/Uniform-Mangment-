@@ -230,6 +230,9 @@
   .stat-card .value.green{color:var(--green-700);}
   .stat-card .value.red{color:var(--red-700);}
   .stat-card .value.amber{color:var(--amber-700);}
+  .stat-card-clickable{cursor:pointer;transition:box-shadow .15s, transform .05s, border-color .15s;}
+  .stat-card-clickable:hover{box-shadow:0 4px 16px rgba(15,36,57,.14);border-color:var(--navy-700);}
+  .stat-card-clickable:active{transform:translateY(1px);}
 
   .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;}
   .panel-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
@@ -424,6 +427,7 @@ const STATUS_BADGE = {
 };
 const ROLE_LABEL = {admin:'مدير النظام', hr:'الموارد البشرية', tailor:'الخياط', branch_manager:'مدير فروع'};
 function hasHRAccess(role){ return role==='hr' || role==='branch_manager' || role==='admin'; }
+const INPROGRESS_FILTER = '__inprogress__'; // فلتر مجمّع لحالتي "تم استلامه من الخياط" + "قيد التنفيذ"
 
 const uid = (p)=> p + '_' + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
 function fmtDate(d){ if(!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('ar-SA-u-ca-gregory',{year:'numeric',month:'2-digit',day:'2-digit'}); }
@@ -878,21 +882,27 @@ function dashboardView(){
   const delivered = countByStatus(STATUS.DELIVERED);
   const price = STATE.settings.price;
   const totalCost = delivered * price;
+  const canDrill = hasHRAccess(STATE.currentUser.role);
 
   const cards = [
-    {l:'إجمالي الموظفين', v: total, c:''},
-    {l:'طلبات جديدة', v: countByStatus(STATUS.NEW), c:''},
-    {l:'قيد التنفيذ', v: countByStatus(STATUS.RECEIVED)+countByStatus(STATUS.PROGRESS), c:'amber'},
-    {l:'طلبات منجزة', v: countByStatus(STATUS.DONE), c:'gold'},
-    {l:'تم تسليمها', v: delivered, c:'green'},
-    {l:'مستحقون لليونيفورم', v: eligible, c:'green'},
-    {l:'غير مستحقين حاليًا', v: notEligible, c:'red'},
-    {l:'إجمالي تكلفة اليونيفورم', v: totalCost.toLocaleString('ar')+' ريال', c:'gold'},
+    {l:'إجمالي الموظفين', v: total, c:'', action:'employees-all'},
+    {l:'طلبات جديدة', v: countByStatus(STATUS.NEW), c:'', action:'orders-new'},
+    {l:'قيد التنفيذ', v: countByStatus(STATUS.RECEIVED)+countByStatus(STATUS.PROGRESS), c:'amber', action:'orders-inprogress'},
+    {l:'طلبات منجزة', v: countByStatus(STATUS.DONE), c:'gold', action:'orders-done'},
+    {l:'تم تسليمها', v: delivered, c:'green', action:'orders-delivered'},
+    {l:'مستحقون لليونيفورم', v: eligible, c:'green', action:'employees-eligible'},
+    {l:'غير مستحقين حاليًا', v: notEligible, c:'red', action:'employees-noteligible'},
+    {l:'إجمالي تكلفة اليونيفورم', v: totalCost.toLocaleString('ar')+' ريال', c:'gold', action:'orders-delivered'},
   ];
   const recent = [...orders].sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate)).slice(0,6);
   return `
     <div class="stat-grid">
-      ${cards.map(c=>`<div class="stat-card"><div class="label">${c.l}</div><div class="value ${c.c}">${c.v}</div></div>`).join('')}
+      ${cards.map(c=>{
+        const clickable = canDrill && c.action;
+        return `<div class="stat-card ${clickable?'stat-card-clickable':''}" ${clickable?`data-stat-action="${c.action}"`:''}>
+          <div class="label">${c.l}</div><div class="value ${c.c}">${c.v}</div>
+        </div>`;
+      }).join('')}
       ${tailorBalanceCard()}
     </div>
     <div class="panel">
@@ -905,6 +915,31 @@ function dashboardView(){
       </div>
     </div>
   `;
+}
+
+/* ---- التنقل من بطاقات لوحة التحكم إلى الشاشة والفلتر المناسبين ---- */
+function goToOrdersFiltered(statusValue){
+  STATE.view = 'orders';
+  STATE.orderFilters = {search:'', status: statusValue||''};
+  STATE.sidebarOpen = false; STATE.detailId = null;
+  render();
+}
+function goToEmployeesFiltered(statusValue){
+  STATE.view = 'employees';
+  STATE.empFilters = {search:'', branch:'', title:'', status: statusValue||''};
+  STATE.sidebarOpen = false; STATE.detailId = null;
+  render();
+}
+function handleStatCardClick(action){
+  switch(action){
+    case 'employees-all': return goToEmployeesFiltered('');
+    case 'employees-eligible': return goToEmployeesFiltered('eligible');
+    case 'employees-noteligible': return goToEmployeesFiltered('not');
+    case 'orders-new': return goToOrdersFiltered(STATUS.NEW);
+    case 'orders-inprogress': return goToOrdersFiltered(INPROGRESS_FILTER);
+    case 'orders-done': return goToOrdersFiltered(STATUS.DONE);
+    case 'orders-delivered': return goToOrdersFiltered(STATUS.DELIVERED);
+  }
 }
 
 /* ---- بطاقة إجمالي قيمة طلبات الخياط: قابلة للتعديل والتصفية للأدمن ---- */
@@ -963,6 +998,10 @@ function bindDashboard(){
       render();
     }
   };
+
+  document.querySelectorAll('[data-stat-action]').forEach(el=>{
+    el.onclick = ()=> handleStatCardClick(el.dataset.statAction);
+  });
 }
 
 /* =========================================================
@@ -1124,7 +1163,7 @@ function ordersView(){
   let list = STATE.orders.filter(o=>{
     const s = q.search.trim();
     const matchSearch = !s || o.employeeName.includes(s) || o.employeeNumber.includes(s) || o.code.includes(s);
-    const matchStatus = !q.status || o.status===q.status;
+    const matchStatus = !q.status || (q.status===INPROGRESS_FILTER ? [STATUS.RECEIVED, STATUS.PROGRESS].includes(o.status) : o.status===q.status);
     return matchSearch && matchStatus;
   }).sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate));
 
@@ -1135,6 +1174,7 @@ function ordersView(){
           <input id="ord-search" placeholder="بحث برقم الطلب / اسم الموظف" value="${q.search}" style="width:230px;">
           <select id="ord-status">
             <option value="">كل الحالات</option>
+            <option value="${INPROGRESS_FILTER}" ${q.status===INPROGRESS_FILTER?'selected':''}>قيد التنفيذ (استلام + تنفيذ)</option>
             ${Object.values(STATUS).map(s=>`<option ${q.status===s?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
