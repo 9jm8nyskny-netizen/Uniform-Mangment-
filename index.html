@@ -915,6 +915,7 @@ function bindDashboard(){}
 function employeesView(){
   const role = STATE.currentUser.role;
   const canManage = hasHRAccess(role);
+  const canDelete = role==='admin';
   const q = STATE.empFilters || {search:'', branch:'', status:'', title:''};
   let list = STATE.employees.filter(e=>{
     const s = q.search.trim();
@@ -956,6 +957,7 @@ function employeesView(){
               <td>
                 ${canManage ? `<button class="icon-btn" data-edit-emp="${e.id}" title="تعديل">✎</button>` : ''}
                 ${canManage && elig.eligible ? `<button class="icon-btn" data-new-order="${e.id}" title="طلب جديد">+</button>` : ''}
+                ${canDelete ? `<button class="icon-btn" data-del-emp="${e.id}" title="حذف">🗑</button>` : ''}
               </td>
             </tr>`;
           }).join('') : `<tr><td colspan="10" class="empty-row">لا يوجد موظفون مطابقون</td></tr>`}
@@ -975,6 +977,27 @@ function bindEmployees(){
   document.querySelectorAll('[data-edit-emp]').forEach(el=> el.onclick = ()=> openEmployeeModal(el.dataset.editEmp));
   document.querySelectorAll('[data-new-order]').forEach(el=> el.onclick = ()=> openOrderModal(el.dataset.newOrder));
   document.querySelectorAll('[data-emp-detail]').forEach(el=> el.onclick = (ev)=>{ ev.preventDefault(); STATE.detailId = el.dataset.empDetail; STATE.view='employeeDetail'; render(); });
+  document.querySelectorAll('[data-del-emp]').forEach(el=> el.onclick = ()=> deleteEmployee(el.dataset.delEmp));
+}
+
+function deleteEmployee(empId){
+  const emp = STATE.employees.find(e=>e.id===empId);
+  if(!emp) return;
+  const orderCount = STATE.orders.filter(o=>o.employeeId===empId).length;
+  const activeOrder = STATE.orders.some(o=>o.employeeId===empId && ![STATUS.DELIVERED, STATUS.REJECTED].includes(o.status));
+  let msg = `حذف الموظف "${emp.name}"؟ لا يمكن التراجع عن هذا الإجراء.`;
+  if(activeOrder){
+    msg = `الموظف "${emp.name}" لديه طلب يونيفورم قائم حالياً لم يُسلَّم بعد. حذف الموظف لن يحذف الطلب نفسه، لكنك لن تتمكن من الوصول لصفحة سجله بعد الحذف. هل تريد المتابعة؟`;
+  } else if(orderCount>0){
+    msg = `للموظف "${emp.name}" ${orderCount} طلب/طلبات سابقة في السجل. ستبقى هذه الطلبات في شاشة "الطلبات" لكن لن يمكن الوصول لصفحة سجل الموظف بعد الحذف. هل تريد المتابعة؟`;
+  }
+  if(confirm(msg)){
+    STATE.employees = STATE.employees.filter(e=>e.id!==empId);
+    persist('employees');
+    addAudit('حذف موظف', `${emp.name} — ${emp.employeeNumber}`);
+    toast('تم حذف الموظف');
+    render();
+  }
 }
 
 function openEmployeeModal(empId){
@@ -992,7 +1015,10 @@ function employeeDetailView(){
   const history = STATE.orders.filter(o=>o.employeeId===emp.id).sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate));
   const elig = employeeEligibility(emp);
   return `
-    <button class="btn btn-ghost btn-sm" id="back-to-emp" style="margin-bottom:16px;">→ العودة لقائمة الموظفين</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      <button class="btn btn-ghost btn-sm" id="back-to-emp">→ العودة لقائمة الموظفين</button>
+      ${STATE.currentUser.role==='admin' ? `<button class="btn btn-danger btn-sm" id="del-emp-detail-btn">🗑 حذف الموظف</button>` : ''}
+    </div>
     <div class="panel">
       <div class="panel-head"><h3>${emp.name}</h3><span class="badge ${elig.eligible?'badge-eligible':'badge-not-eligible'}">${elig.eligible?'مستحق حالياً':'بعد '+elig.daysLeft+' يوم'}</span></div>
       <div class="panel-body">
@@ -1024,6 +1050,12 @@ function employeeDetailView(){
 function bindEmployeeDetail(){
   const b = document.getElementById('back-to-emp');
   if(b) b.onclick = ()=>{ STATE.view='employees'; render(); };
+  const delBtn = document.getElementById('del-emp-detail-btn');
+  if(delBtn) delBtn.onclick = ()=>{
+    const id = STATE.detailId;
+    deleteEmployee(id);
+    if(!STATE.employees.some(e=>e.id===id)){ STATE.view='employees'; render(); }
+  };
 }
 
 /* =========================================================
