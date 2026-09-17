@@ -733,7 +733,7 @@ async function persist(key){
 }
 
 function addAudit(action, details){
-  STATE.auditLogs.unshift({id:uid('a'), action, details, user: STATE.currentUser? STATE.currentUser.name + ' ('+ROLE_LABEL[STATE.currentUser.role]+')':'—', at: new Date().toISOString()});
+  STATE.auditLogs.unshift({id:uid('a'), action, details, user: STATE.currentUser? STATE.currentUser.name + ' ('+ROLE_LABEL_OF(STATE.currentUser.role)+')':'—', at: new Date().toISOString()});
   persist('auditLogs');
 }
 function addNotification(message){
@@ -958,7 +958,7 @@ function shellView(){
       <div class="nav-group-label">القائمة</div>
       ${items.map(i=>`<div class="nav-item ${STATE.view===i.v?'active':''}" data-nav="${i.v}"><span class="ic">${i.ic}</span>${i.l}</div>`).join('')}
       <div class="sidebar-foot">
-        <div class="who"><b>${u.name}</b>${ROLE_LABEL[u.role]}</div>
+        <div class="who"><b>${u.name}</b>${ROLE_LABEL_OF(u.role)}</div>
         <div class="nav-item" data-action="logout"><span class="ic">↩</span>تسجيل الخروج</div>
       </div>
     </div>
@@ -1524,7 +1524,7 @@ function usersView(){
     <div class="panel-body table-wrap">
       <table><thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th></th></tr></thead>
       <tbody>
-      ${STATE.users.map(u=>`<tr><td>${u.name}</td><td>${u.username}</td><td><span class="tag-pill">${ROLE_LABEL[u.role]}</span></td>
+      ${STATE.users.map(u=>`<tr><td>${u.name}</td><td>${u.username}</td><td><span class="tag-pill">${ROLE_LABEL_OF(u.role)}</span></td>
         <td>
           <button class="icon-btn" data-edit-user="${u.id}" title="تعديل">✎</button>
           ${u.id!==STATE.currentUser.id? `<button class="icon-btn" data-del-user="${u.id}" title="حذف">🗑</button>`:''}
@@ -2111,11 +2111,11 @@ function bindUserModal(editUser){
       editUser.role = role;
       if(password) editUser.password = password;
       if(STATE.currentUser.id===editUser.id) STATE.currentUser = editUser;
-      persist('users'); addAudit('تعديل مستخدم', `${name} (${ROLE_LABEL[role]})`);
+      persist('users'); addAudit('تعديل مستخدم', `${name} (${ROLE_LABEL_OF(role)})`);
       toast('تم حفظ التعديلات');
     } else {
       STATE.users.push({id:uid('u'), name, username, password, role});
-      persist('users'); addAudit('إضافة مستخدم', `${name} (${ROLE_LABEL[role]})`);
+      persist('users'); addAudit('إضافة مستخدم', `${name} (${ROLE_LABEL_OF(role)})`);
       toast('تمت إضافة المستخدم');
     }
     closeModal();
