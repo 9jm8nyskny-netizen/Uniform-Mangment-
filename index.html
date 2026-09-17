@@ -761,11 +761,22 @@ function employeeEligibility(emp){
 ========================================================= */
 function render(){
   const root = document.getElementById('app');
-  if(!STATE.currentUser){ root.innerHTML = loginView(); bindLogin(); renderToasts(); return; }
-  root.innerHTML = shellView();
-  bindShell();
-  renderToasts();
+  try{
+    if(!STATE.currentUser){ root.innerHTML = loginView(); bindLogin(); renderToasts(); return; }
+    root.innerHTML = shellView();
+    bindShell();
+    renderToasts();
+  }catch(e){
+    console.error('render error', e);
+    root.innerHTML = `<div style="padding:24px;font-family:monospace;color:#B42318;white-space:pre-wrap;direction:ltr;text-align:left;background:#fff;">
+      <b>حدث خطأ برمجي أثناء عرض الصفحة (render error):</b><br><br>${(e && (e.stack||e.message)) || e}
+      <br><br><button onclick="STATE.currentUser=null;render();" style="margin-top:12px;padding:8px 14px;">⟲ العودة لشاشة الدخول</button>
+    </div>`;
+  }
 }
+window.addEventListener('error', function(e){
+  console.error('uncaught error', e.error||e.message);
+});
 
 function renderToasts(){
   let wrap = document.querySelector('.toast-wrap');
