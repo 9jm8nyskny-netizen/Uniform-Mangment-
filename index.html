@@ -61,9 +61,44 @@
     --radius-sm:6px;
     --shadow:0 1px 2px rgba(15,36,57,.06),0 1px 8px rgba(15,36,57,.04);
   }
+  /* ---------- الوضع الداكن (Dark Mode) ---------- */
+  :root[data-theme="dark"]{
+    --navy-900:#0A1826;
+    --navy-800:#0F2439;
+    --navy-700:#1B3A5C;
+    --navy-100:#1E2C3B;
+    --gold-600:#D4AF5A;
+    --gold-100:#3A3120;
+    --bg:#0D1420;
+    --surface:#151E2C;
+    --border:#28374A;
+    --text-900:#EAF0F7;
+    --text-600:#A9B7C6;
+    --text-400:#748297;
+    --green-700:#4CAE84;
+    --green-100:#173226;
+    --amber-700:#E0B152;
+    --amber-100:#3A2E14;
+    --red-700:#E28080;
+    --red-100:#3A1F1F;
+    --blue-700:#6FA3D8;
+    --blue-100:#1B2B3E;
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 1px 10px rgba(0,0,0,.25);
+  }
+  :root[data-theme="dark"] body{ color:var(--text-900); }
+  :root[data-theme="dark"] .login-form-brand .logo-img,
+  :root[data-theme="dark"] .brand .logo-img{ background:#fff; }
+  :root[data-theme="dark"] .field input,
+  :root[data-theme="dark"] .field select,
+  :root[data-theme="dark"] .io-field,
+  :root[data-theme="dark"] .panel-toolbar input,
+  :root[data-theme="dark"] .panel-toolbar select{ background:#0F1826; color:var(--text-900); }
+  :root[data-theme="dark"] tbody tr:hover{ background:rgba(255,255,255,.03); }
+  :root[data-theme="dark"] .notif-item:not([style*="var(--blue-100)"]){ background:transparent; }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;height:100%;overscroll-behavior-y:none;}
   body{
+    transition:background-color .2s ease, color .2s ease;
     font-family:"Segoe UI","Tahoma",Arial,sans-serif;
     background:var(--bg);
     color:var(--text-900);
@@ -83,6 +118,7 @@
 
   /* ---------- Login ---------- */
   .login-wrap{
+    position:relative;
     min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;
     background:
       radial-gradient(1200px 500px at 15% 0%, rgba(180,145,58,.10), transparent 60%),
@@ -555,6 +591,7 @@ const I18N = {
     eligibility_updated:(n,l,nx)=>`تعديل استحقاق يونيفورم موظف: ${n} — آخر صرف: ${l}، الاستحقاق القادم: ${nx}`,
     require_select_employee:'الرجاء اختيار موظف', require_exception_reason:'يجب تسجيل سبب الاستثناء',
     not_eligible_error:'الموظف غير مستحق لصرف يونيفورم جديد حالياً', existing_order_error:'يوجد طلب قائم بالفعل لهذا الموظف',
+    not_eligible_detail:(l,n,d)=>`لا يمكن إنشاء طلب يونيفورم جديد لهذا الموظف. الموظف استلم آخر يونيفورم بتاريخ ${l}، والاستحقاق القادم بتاريخ ${n} (بعد ${d} يوم).`,
     order_sent:'تم إرسال الطلب إلى الخياط', require_uniform_type:'الرجاء تعبئة نوع اليونيفورم', require_positive_price:'السعر يجب أن يكون أكبر من صفر',
     order_edit_saved:'تم حفظ تعديلات الطلب', order_status_updated:'تم تحديث حالة الطلب', delivered_before_done_error:'لا يمكن تسجيل التسليم قبل إنجاز الطلب',
     require_name_username:'الرجاء تعبئة الاسم واسم المستخدم', require_password:'الرجاء إدخال كلمة مرور', username_taken:'اسم المستخدم مستخدم مسبقاً',
@@ -632,6 +669,7 @@ const I18N = {
     eligibility_updated:(n,l,nx)=>`Updated uniform eligibility for ${n} — Last issue: ${l}, Next due: ${nx}`,
     require_select_employee:'Please select an employee', require_exception_reason:'You must record a reason for the exception',
     not_eligible_error:'This employee is not currently eligible for a new uniform', existing_order_error:'An active order already exists for this employee',
+    not_eligible_detail:(l,n,d)=>`A new uniform order cannot be created for this employee. Their last uniform was issued on ${l}, and the next eligibility date is ${n} (in ${d} day(s)).`,
     order_sent:'Order sent to the tailor', require_uniform_type:'Please fill in the uniform type', require_positive_price:'Price must be greater than zero',
     order_edit_saved:'Order changes saved', order_status_updated:'Order status updated', delivered_before_done_error:'Delivery cannot be recorded before the order is completed',
     require_name_username:'Please fill in the name and username', require_password:'Please enter a password', username_taken:'This username is already in use',
@@ -675,7 +713,8 @@ function daysBetween(a,b){ return Math.ceil((new Date(a) - new Date(b)) / 864000
 ========================================================= */
 let STATE = {
   users:[], employees:[], orders:[], notifications:[], auditLogs:[], branches:[], jobTitles:[], settings:{price:90, eligibilityDays:365},
-  currentUser:null, view:'dashboard', sidebarOpen:false, toasts:[], refreshing:false, editingJobTitleIndex:null, editingTailorBalance:false
+  currentUser:null, view:'dashboard', sidebarOpen:false, toasts:[], refreshing:false, editingJobTitleIndex:null, editingTailorBalance:false,
+  theme: getSavedTheme(), lang: getSavedLang()
 };
 
 const KEY_MAP = {employees:'uf-employees', orders:'uf-orders', notifications:'uf-notifications', auditLogs:'uf-audit', users:'uf-users', branches:'uf-branches', jobTitles:'uf-jobtitles', settings:'uf-settings'};
@@ -761,22 +800,11 @@ function employeeEligibility(emp){
 ========================================================= */
 function render(){
   const root = document.getElementById('app');
-  try{
-    if(!STATE.currentUser){ root.innerHTML = loginView(); bindLogin(); renderToasts(); return; }
-    root.innerHTML = shellView();
-    bindShell();
-    renderToasts();
-  }catch(e){
-    console.error('render error', e);
-    root.innerHTML = `<div style="padding:24px;font-family:monospace;color:#B42318;white-space:pre-wrap;direction:ltr;text-align:left;background:#fff;">
-      <b>حدث خطأ برمجي أثناء عرض الصفحة (render error):</b><br><br>${(e && (e.stack||e.message)) || e}
-      <br><br><button onclick="STATE.currentUser=null;render();" style="margin-top:12px;padding:8px 14px;">⟲ العودة لشاشة الدخول</button>
-    </div>`;
-  }
+  if(!STATE.currentUser){ root.innerHTML = loginView(); bindLogin(); renderToasts(); return; }
+  root.innerHTML = shellView();
+  bindShell();
+  renderToasts();
 }
-window.addEventListener('error', function(e){
-  console.error('uncaught error', e.error||e.message);
-});
 
 function renderToasts(){
   let wrap = document.querySelector('.toast-wrap');
@@ -790,37 +818,41 @@ function renderToasts(){
 function loginView(){
   return `
   <div class="login-wrap">
+    <div style="position:absolute;top:16px;left:16px;display:flex;gap:8px;z-index:5;">
+      <button class="bell" id="login-theme-toggle" title="${t('theme_toggle_tip')}" style="background:rgba(255,255,255,.12);color:#fff;">${STATE.theme==='dark'?'☀️':'🌙'}</button>
+      <button class="bell" id="login-lang-toggle" title="${t('lang_toggle_tip')}" style="background:rgba(255,255,255,.12);color:#fff;font-weight:800;font-size:12px;">${STATE.lang==='en'?'AR':'EN'}</button>
+    </div>
     <div class="login-card">
       <div class="login-form">
         <div class="login-form-brand">
           ${CAFE_LOGO_SVG}
-          <div class="brand-text"><b>نظام إدارة اليونيفورم</b><span>Momo Cafe — لحظة كيف</span></div>
+          <div class="brand-text"><b>${t('app_title')}</b><span>Momo Cafe — لحظة كيف</span></div>
         </div>
-        <div class="eyebrow">مرحبًا بعودتك</div>
-        <h2>تسجيل الدخول</h2>
-        <div class="sub">أدخل بيانات حسابك للمتابعة إلى لوحة التحكم</div>
+        <div class="eyebrow">${t('login_welcome')}</div>
+        <h2>${t('login_title')}</h2>
+        <div class="sub">${t('login_sub')}</div>
         <div class="field">
-          <label>اسم المستخدم</label>
+          <label>${t('username')}</label>
           <div class="io-field">
             <span class="io-icon">👤</span>
-            <input id="li-user" placeholder="اسم المستخدم" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+            <input id="li-user" placeholder="${t('username')}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
           </div>
         </div>
         <div class="field">
-          <label>كلمة المرور</label>
+          <label>${t('password')}</label>
           <div class="io-field">
             <span class="io-icon">🔒</span>
-            <input id="li-pass" type="password" placeholder="كلمة المرور" autocomplete="current-password">
-            <button type="button" class="pass-toggle" id="li-pass-toggle" aria-label="إظهار كلمة المرور">👁</button>
+            <input id="li-pass" type="password" placeholder="${t('password')}" autocomplete="current-password">
+            <button type="button" class="pass-toggle" id="li-pass-toggle" aria-label="Show password">👁</button>
           </div>
         </div>
-        <button class="btn btn-primary btn-block" id="li-submit">دخول</button>
+        <button class="btn btn-primary btn-block" id="li-submit">${t('login_btn')}</button>
         <div class="err" id="li-err"></div>
         <a href="#" class="portal-link" id="li-employee-portal">
-          <span>الاستعلام عن حالة اليونيفورم كموظف</span><span>←</span>
+          <span>${t('employee_portal_link')}</span><span>←</span>
         </a>
-        ${!FIREBASE_CONNECTED? `<div class="storage-warn-login">⚠ لا يوجد اتصال حالي بقاعدة بيانات Firebase — تحقق من الإنترنت أو إعدادات المشروع.</div>` : ''}
-        <div class="login-secure-note"><span>🔒</span><span>اتصال مشفّر عبر HTTPS</span></div>
+        ${!FIREBASE_CONNECTED? `<div class="storage-warn-login">${t('firebase_disconnected_login')}</div>` : ''}
+        <div class="login-secure-note"><span>🔒</span><span>${t('secure_note')}</span></div>
       </div>
     </div>
   </div>`;
@@ -831,8 +863,11 @@ function bindLogin(){
   document.getElementById('li-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
   document.getElementById('li-user').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('li-pass').focus(); });
   document.getElementById('li-employee-portal').onclick = (e)=>{ e.preventDefault(); STATE.employeePortal = true; renderEmployeePortal(); };
+  document.getElementById('login-theme-toggle').onclick = toggleTheme;
+  document.getElementById('login-lang-toggle').onclick = toggleLang;
   const passToggle = document.getElementById('li-pass-toggle');
   const passInput = document.getElementById('li-pass');
+
   passToggle.onclick = ()=>{
     const showing = passInput.type === 'text';
     passInput.type = showing ? 'password' : 'text';
@@ -841,21 +876,14 @@ function bindLogin(){
   };
 }
 function doLogin(){
-  try{
-    const u = document.getElementById('li-user').value.trim();
-    const p = document.getElementById('li-pass').value;
-    const usersList = Array.isArray(STATE.users) ? STATE.users : Object.values(STATE.users||{});
-    const user = usersList.find(x=>x && x.username===u && x.password===p);
-    if(!user){ document.getElementById('li-err').textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة. (عدد المستخدمين المحمّلين: '+usersList.length+')'; return; }
-    STATE.currentUser = user;
-    STATE.view = 'dashboard';
-    addAudit('تسجيل دخول', user.name);
-    render();
-  }catch(e){
-    console.error('login error', e);
-    const err = document.getElementById('li-err');
-    if(err) err.textContent = 'خطأ برمجي أثناء تسجيل الدخول: ' + (e && e.message || e);
-  }
+  const u = document.getElementById('li-user').value.trim();
+  const p = document.getElementById('li-pass').value;
+  const user = STATE.users.find(x=>x.username===u && x.password===p);
+  if(!user){ document.getElementById('li-err').textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة.'; return; }
+  STATE.currentUser = user;
+  STATE.view = 'dashboard';
+  addAudit('تسجيل دخول', user.name);
+  render();
 }
 function logout(){
   addAudit('تسجيل خروج', STATE.currentUser.name);
@@ -868,38 +896,44 @@ function renderEmployeePortal(){
   const root = document.getElementById('app');
   root.innerHTML = `
   <div class="login-wrap">
+    <div style="position:absolute;top:16px;left:16px;display:flex;gap:8px;z-index:5;">
+      <button class="bell" id="portal-theme-toggle" title="${t('theme_toggle_tip')}" style="background:rgba(255,255,255,.12);color:#fff;">${STATE.theme==='dark'?'☀️':'🌙'}</button>
+      <button class="bell" id="portal-lang-toggle" title="${t('lang_toggle_tip')}" style="background:rgba(255,255,255,.12);color:#fff;font-weight:800;font-size:12px;">${STATE.lang==='en'?'AR':'EN'}</button>
+    </div>
     <div class="login-card">
       <div class="login-form">
         <div class="login-form-brand" style="display:flex;">
           ${CAFE_LOGO_SVG}
-          <div class="brand-text"><b>نظام إدارة اليونيفورم</b><span>الاستعلام الذاتي للموظف</span></div>
+          <div class="brand-text"><b>${t('app_title')}</b><span>${t('portal_self_title')}</span></div>
         </div>
-        <h2>حالة اليونيفورم</h2>
-        <div class="sub">أدخل الرقم الوظيفي ورقم الهوية للتحقق من حالتك</div>
+        <h2>${t('portal_status_title')}</h2>
+        <div class="sub">${t('portal_sub')}</div>
         <div class="field">
-          <label>الرقم الوظيفي</label>
+          <label>${t('employee_number')}</label>
           <div class="io-field">
             <span class="io-icon">🆔</span>
-            <input id="ep-num" placeholder="مثال: 1023" inputmode="numeric">
+            <input id="ep-num" placeholder="${STATE.lang==='en'?'e.g. 1023':'مثال: 1023'}" inputmode="numeric">
           </div>
         </div>
         <div class="field">
-          <label>رقم الهوية / الإقامة</label>
+          <label>${t('national_id')}</label>
           <div class="io-field">
             <span class="io-icon">🪪</span>
-            <input id="ep-id" placeholder="10 أرقام" inputmode="numeric">
+            <input id="ep-id" placeholder="${STATE.lang==='en'?'10 digits':'10 أرقام'}" inputmode="numeric">
           </div>
         </div>
-        <button class="btn btn-primary btn-block" id="ep-submit">عرض الحالة</button>
+        <button class="btn btn-primary btn-block" id="ep-submit">${t('view_status')}</button>
         <div class="err" id="ep-err"></div>
         <div id="ep-result"></div>
         <div style="text-align:center;margin-top:18px;">
-          <button class="link-btn" id="ep-back">← العودة لتسجيل الدخول</button>
+          <button class="link-btn" id="ep-back">${t('back_to_login')}</button>
         </div>
       </div>
     </div>
   </div>`;
   document.getElementById('ep-back').onclick = ()=>{ STATE.employeePortal=false; render(); };
+  document.getElementById('portal-theme-toggle').onclick = ()=>{ toggleTheme(); renderEmployeePortal(); };
+  document.getElementById('portal-lang-toggle').onclick = ()=>{ toggleLang(); renderEmployeePortal(); };
   document.getElementById('ep-id').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('ep-submit').click(); });
   document.getElementById('ep-submit').onclick = ()=>{
     const num = document.getElementById('ep-num').value.trim();
@@ -907,19 +941,19 @@ function renderEmployeePortal(){
     const emp = STATE.employees.find(e=>e.employeeNumber===num && e.nationalId===nid);
     const errEl = document.getElementById('ep-err');
     const resEl = document.getElementById('ep-result');
-    if(!emp){ errEl.textContent='لم يتم العثور على بيانات مطابقة.'; resEl.innerHTML=''; return; }
+    if(!emp){ errEl.textContent=t('portal_not_found'); resEl.innerHTML=''; return; }
     errEl.textContent='';
     const elig = employeeEligibility(emp);
     const empOrders = STATE.orders.filter(o=>o.employeeId===emp.id).sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate));
     const latest = empOrders[0];
     resEl.innerHTML = `
       <div class="alert ${elig.eligible?'alert-green':'alert-blue'}" style="margin-top:16px;">
-        ${elig.eligible ? 'أنت مستحق لصرف يونيفورم جديد.' : `الاستحقاق القادم بعد ${elig.daysLeft} يوم (${fmtDate(emp.nextDueDate)}).`}
+        ${elig.eligible ? t('eligible_now') : t('next_due_in', elig.daysLeft, fmtDate(emp.nextDueDate))}
       </div>
-      <div class="info-line"><span>الاسم</span><span>${emp.name}</span></div>
-      <div class="info-line"><span>نوع اليونيفورم الحالي</span><span>${emp.uniformType||'ثوب'}</span></div>
-      <div class="info-line"><span>تاريخ آخر صرف</span><span>${fmtDate(emp.lastIssueDate)}</span></div>
-      <div class="info-line"><span>حالة آخر طلب</span><span>${latest? `<span class="badge ${STATUS_BADGE[latest.status]}">${latest.status}</span>` : '—'}</span></div>
+      <div class="info-line"><span>${t('name')}</span><span>${emp.name}</span></div>
+      <div class="info-line"><span>${t('current_uniform_type')}</span><span>${emp.uniformType||'ثوب'}</span></div>
+      <div class="info-line"><span>${t('last_issue_date')}</span><span>${fmtDate(emp.lastIssueDate)}</span></div>
+      <div class="info-line"><span>${t('latest_order_status')}</span><span>${latest? `<span class="badge ${STATUS_BADGE[latest.status]}">${statusLabel(latest.status)}</span>` : t('empty')}</span></div>
     `;
   };
 }
@@ -928,20 +962,20 @@ function renderEmployeePortal(){
    SHELL (post-login)
 ========================================================= */
 function navItems(role){
-  const base = [{v:'dashboard', ic:'▦', l:'لوحة التحكم'}];
-  if(hasHRAccess(role)) base.push({v:'employees', ic:'👤', l:'الموظفون'});
-  base.push({v:'orders', ic:'📋', l:'الطلبات'});
-  base.push({v:'notifications', ic:'🔔', l:'الإشعارات'});
+  const base = [{v:'dashboard', ic:'▦', l:t('nav_dashboard')}];
+  if(hasHRAccess(role)) base.push({v:'employees', ic:'👤', l:t('nav_employees')});
+  base.push({v:'orders', ic:'📋', l:t('nav_orders')});
+  base.push({v:'notifications', ic:'🔔', l:t('nav_notifications')});
   if(role==='admin'){
-    base.push({v:'users', ic:'🛠', l:'المستخدمون'});
-    base.push({v:'settings', ic:'⚙', l:'الإعدادات'});
-    base.push({v:'audit', ic:'🗂', l:'سجل العمليات'});
+    base.push({v:'users', ic:'🛠', l:t('nav_users')});
+    base.push({v:'settings', ic:'⚙', l:t('nav_settings')});
+    base.push({v:'audit', ic:'🗂', l:t('nav_audit')});
   }
   return base;
 }
 function viewTitle(v){
-  return {dashboard:'لوحة التحكم', employees:'الموظفون', orders:'الطلبات', notifications:'الإشعارات',
-    users:'إدارة المستخدمين', settings:'الإعدادات العامة', audit:'سجل العمليات', employeeDetail:'سجل الموظف'}[v] || '';
+  return {dashboard:t('nav_dashboard'), employees:t('nav_employees'), orders:t('nav_orders'), notifications:t('nav_notifications'),
+    users:t('title_users'), settings:t('settings_title'), audit:t('nav_audit'), employeeDetail:t('nav_employeeDetail')}[v] || '';
 }
 function initials(name){ return (name||'').trim().split(' ').slice(0,2).map(w=>w[0]).join(''); }
 
@@ -951,15 +985,15 @@ function shellView(){
   const unread = STATE.notifications.filter(n=>!n.read).length;
   return `
   <div class="shell">
-    ${!FIREBASE_CONNECTED? `<div class="storage-warn" style="grid-column:1/-1;">⚠ انقطع الاتصال بقاعدة بيانات Firebase — التغييرات ستُحفظ محليًا مؤقتًا وتتزامن عند عودة الاتصال.</div>` : ''}
+    ${!FIREBASE_CONNECTED? `<div class="storage-warn" style="grid-column:1/-1;">${t('firebase_disconnected_shell')}</div>` : ''}
     ${STATE.sidebarOpen? `<div class="sidebar-backdrop" id="sidebar-backdrop"></div>` : ''}
     <div class="sidebar ${STATE.sidebarOpen?'open':''}">
-      <div class="brand">${CAFE_LOGO_SVG}<div>نظام اليونيفورم<br><span style="font-weight:400;color:#8FA3B8;font-size:11px;">إدارة الصرف والمتابعة</span></div></div>
-      <div class="nav-group-label">القائمة</div>
+      <div class="brand">${CAFE_LOGO_SVG}<div>${t('app_title')}<br><span style="font-weight:400;color:#8FA3B8;font-size:11px;">${t('brand_sub')}</span></div></div>
+      <div class="nav-group-label">${t('menu')}</div>
       ${items.map(i=>`<div class="nav-item ${STATE.view===i.v?'active':''}" data-nav="${i.v}"><span class="ic">${i.ic}</span>${i.l}</div>`).join('')}
       <div class="sidebar-foot">
         <div class="who"><b>${u.name}</b>${ROLE_LABEL_OF(u.role)}</div>
-        <div class="nav-item" data-action="logout"><span class="ic">↩</span>تسجيل الخروج</div>
+        <div class="nav-item" data-action="logout"><span class="ic">↩</span>${t('logout')}</div>
       </div>
     </div>
     <div class="main">
@@ -969,13 +1003,15 @@ function shellView(){
           <h1>${viewTitle(STATE.view)}</h1>
         </div>
         <div class="actions">
-          <span class="bell" id="conn-status" title="${FIREBASE_CONNECTED? 'متصل بقاعدة البيانات — التحديثات فورية':'غير متصل'}" style="${FIREBASE_CONNECTED?'':'color:var(--red-700);'}">${FIREBASE_CONNECTED? '🟢':'🔴'}</span>
-          <button class="bell" id="manual-refresh-btn" title="تحديث البيانات الآن">↻</button>
+          <span class="bell" id="conn-status" title="${t('conn_status_tip', FIREBASE_CONNECTED)}" style="${FIREBASE_CONNECTED?'':'color:var(--red-700);'}">${FIREBASE_CONNECTED? '🟢':'🔴'}</span>
+          <button class="bell" id="manual-refresh-btn" title="${t('refresh_tip')}">↻</button>
+          <button class="bell" id="theme-toggle-btn" title="${t('theme_toggle_tip')}">${STATE.theme==='dark'?'☀️':'🌙'}</button>
+          <button class="bell" id="lang-toggle-btn" title="${t('lang_toggle_tip')}" style="font-weight:800;font-size:12px;">${STATE.lang==='en'?'AR':'EN'}</button>
           <button class="bell" id="bell-btn">🔔${unread?`<span class="dot"></span>`:''}</button>
           <div class="avatar">${initials(u.name)}</div>
         </div>
       </div>
-      <div class="ptr-box" id="ptr-box"><span class="ptr-icon">↻</span><span>اسحب للتحديث...</span></div>
+      <div class="ptr-box" id="ptr-box"><span class="ptr-icon">↻</span><span>${t('pull_to_refresh')}</span></div>
       <div class="content" id="content">${viewContent()}</div>
     </div>
   </div>
@@ -997,6 +1033,10 @@ function bindShell(){
   if(bellBtn) bellBtn.onclick = ()=>{ STATE.view='notifications'; render(); };
   const refreshBtn = document.getElementById('manual-refresh-btn');
   if(refreshBtn) refreshBtn.onclick = ()=> doManualRefresh();
+  const themeBtn = document.getElementById('theme-toggle-btn');
+  if(themeBtn) themeBtn.onclick = toggleTheme;
+  const langBtn = document.getElementById('lang-toggle-btn');
+  if(langBtn) langBtn.onclick = toggleLang;
   bindViewHandlers();
   bindModal();
 }
@@ -1138,14 +1178,14 @@ function dashboardView(){
   const canDrill = hasHRAccess(STATE.currentUser.role);
 
   const cards = [
-    {l:'إجمالي الموظفين', v: total, c:'', action:'employees-all'},
-    {l:'طلبات جديدة', v: countByStatus(STATUS.NEW), c:'', action:'orders-new'},
-    {l:'قيد التنفيذ', v: countByStatus(STATUS.RECEIVED)+countByStatus(STATUS.PROGRESS), c:'amber', action:'orders-inprogress'},
-    {l:'طلبات منجزة', v: countByStatus(STATUS.DONE), c:'gold', action:'orders-done'},
-    {l:'تم تسليمها', v: delivered, c:'green', action:'orders-delivered'},
-    {l:'مستحقون لليونيفورم', v: eligible, c:'green', action:'employees-eligible'},
-    {l:'غير مستحقين حاليًا', v: notEligible, c:'red', action:'employees-noteligible'},
-    {l:'إجمالي تكلفة اليونيفورم', v: totalCost.toLocaleString('ar')+' ريال', c:'gold', action:'orders-delivered'},
+    {l:t('stat_total_employees'), v: total, c:'', action:'employees-all'},
+    {l:t('stat_new_orders'), v: countByStatus(STATUS.NEW), c:'', action:'orders-new'},
+    {l:t('stat_in_progress'), v: countByStatus(STATUS.RECEIVED)+countByStatus(STATUS.PROGRESS), c:'amber', action:'orders-inprogress'},
+    {l:t('stat_done_orders'), v: countByStatus(STATUS.DONE), c:'gold', action:'orders-done'},
+    {l:t('stat_delivered'), v: delivered, c:'green', action:'orders-delivered'},
+    {l:t('stat_eligible'), v: eligible, c:'green', action:'employees-eligible'},
+    {l:t('stat_not_eligible'), v: notEligible, c:'red', action:'employees-noteligible'},
+    {l:t('stat_total_cost'), v: totalCost.toLocaleString(STATE.lang==='en'?'en':'ar')+' '+t('currency'), c:'gold', action:'orders-delivered'},
   ];
   const recent = [...orders].sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate)).slice(0,6);
   return `
@@ -1159,11 +1199,11 @@ function dashboardView(){
       ${tailorBalanceCard()}
     </div>
     <div class="panel">
-      <div class="panel-head"><h3>أحدث الطلبات</h3></div>
+      <div class="panel-head"><h3>${t('recent_orders')}</h3></div>
       <div class="panel-body table-wrap">
-        <table><thead><tr><th>رقم الطلب</th><th>الموظف</th><th>الفرع</th><th>الحالة</th><th>تاريخ الطلب</th></tr></thead>
+        <table><thead><tr><th>${t('col_order_no')}</th><th>${t('col_employee')}</th><th>${t('col_branch')}</th><th>${t('col_status')}</th><th>${t('col_order_date')}</th></tr></thead>
         <tbody>
-          ${recent.length? recent.map(o=>`<tr><td>#${o.code}</td><td>${o.employeeName}</td><td>${o.branch}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${o.status}</span></td><td>${fmtDate(o.createdDate)}</td></tr>`).join('') : `<tr><td colspan="5" class="empty-row">لا توجد طلبات بعد</td></tr>`}
+          ${recent.length? recent.map(o=>`<tr><td>#${o.code}</td><td>${o.employeeName}</td><td>${o.branch}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${statusLabel(o.status)}</span></td><td>${fmtDate(o.createdDate)}</td></tr>`).join('') : `<tr><td colspan="5" class="empty-row">${t('no_orders_yet')}</td></tr>`}
         </tbody></table>
       </div>
     </div>
@@ -1202,22 +1242,22 @@ function tailorBalanceCard(){
 
   if(isAdmin && STATE.editingTailorBalance){
     return `<div class="stat-card">
-      <div class="label">إجمالي قيمة طلبات الخياط</div>
+      <div class="label">${t('tailor_balance_title')}</div>
       <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">
         <input id="tb-input" type="number" value="${balance}" style="width:100%;padding:7px 9px;border:1.5px solid var(--navy-700);border-radius:7px;font-size:15px;font-weight:700;">
-        <button class="icon-btn" id="tb-save" title="حفظ" style="flex:none;">✓</button>
-        <button class="icon-btn" id="tb-cancel" title="إلغاء" style="flex:none;">×</button>
+        <button class="icon-btn" id="tb-save" title="${t('tailor_save')}" style="flex:none;">✓</button>
+        <button class="icon-btn" id="tb-cancel" title="${t('tailor_cancel')}" style="flex:none;">×</button>
       </div>
     </div>`;
   }
 
   return `<div class="stat-card">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-      <div class="label" style="margin-bottom:0;">إجمالي قيمة طلبات الخياط</div>
-      ${isAdmin? `<button class="icon-btn" id="tb-edit" title="تعديل الإجمالي" style="width:24px;height:24px;font-size:11px;">✎</button>` : ''}
+      <div class="label" style="margin-bottom:0;">${t('tailor_balance_title')}</div>
+      ${isAdmin? `<button class="icon-btn" id="tb-edit" title="${t('tailor_edit')}" style="width:24px;height:24px;font-size:11px;">✎</button>` : ''}
     </div>
-    <div class="value" style="margin-top:8px;">${balance.toLocaleString('ar')} ريال</div>
-    ${isAdmin? `<button class="btn btn-danger btn-sm" id="tb-settle" style="margin-top:10px;width:100%;">✓ تم الحساب (تصفير)</button>` : ''}
+    <div class="value" style="margin-top:8px;">${balance.toLocaleString(STATE.lang==='en'?'en':'ar')} ${t('currency')}</div>
+    ${isAdmin? `<button class="btn btn-danger btn-sm" id="tb-settle" style="margin-top:10px;width:100%;">${t('tailor_settle')}</button>` : ''}
   </div>`;
 }
 
@@ -1230,24 +1270,24 @@ function bindDashboard(){
   if(saveBtn) saveBtn.onclick = ()=>{
     const input = document.getElementById('tb-input');
     const newVal = Number(input.value);
-    if(isNaN(newVal) || newVal < 0){ toast('الرجاء إدخال رقم صحيح أكبر من أو يساوي صفر','err'); return; }
+    if(isNaN(newVal) || newVal < 0){ toast(t('tailor_invalid_number'),'err'); return; }
     const oldVal = Number(STATE.settings.tailorBalance || 0);
     STATE.settings.tailorBalance = newVal;
     persist('settings');
     if(newVal!==oldVal){ addAudit('تعديل إجمالي قيمة طلبات الخياط', `${oldVal.toLocaleString('ar')} ريال ← ${newVal.toLocaleString('ar')} ريال`); }
     STATE.editingTailorBalance = false;
-    toast('تم حفظ الإجمالي');
+    toast(t('tailor_save_success'));
     render();
   };
   const settleBtn = document.getElementById('tb-settle');
   if(settleBtn) settleBtn.onclick = ()=>{
     const current = Number(STATE.settings.tailorBalance || 0);
-    if(current<=0){ toast('لا يوجد رصيد حالياً لتصفيته','err'); return; }
-    if(confirm(`هل أنت متأكد من تصفية حساب الخياط بالكامل؟\n\nسيتم اعتبار مبلغ ${current.toLocaleString('ar')} ريال مدفوعاً بالكامل، وسيعود الإجمالي إلى صفر. لا يمكن التراجع عن هذا الإجراء.`)){
+    if(current<=0){ toast(t('tailor_no_balance'),'err'); return; }
+    if(confirm(t('tailor_settle_confirm', current.toLocaleString(STATE.lang==='en'?'en':'ar')))){
       STATE.settings.tailorBalance = 0;
       persist('settings');
       addAudit('تصفية حساب الخياط', `تمت تصفية مبلغ ${current.toLocaleString('ar')} ريال بالكامل`);
-      toast('تم تصفية حساب الخياط بنجاح');
+      toast(t('tailor_settle_success'));
       render();
     }
   };
@@ -1280,20 +1320,20 @@ function employeesView(){
     <div class="panel">
       <div class="panel-head">
         <div class="panel-toolbar">
-          <input id="emp-search" placeholder="بحث بالاسم / الرقم الوظيفي / الهوية" value="${q.search}" style="width:230px;">
-          <select id="emp-branch"><option value="">كل الفروع</option>${STATE.branches.map(b=>`<option ${q.branch===b?'selected':''}>${b}</option>`).join('')}</select>
-          <select id="emp-title"><option value="">كل المسميات</option>${titles.map(t=>`<option ${q.title===t?'selected':''}>${t}</option>`).join('')}</select>
+          <input id="emp-search" placeholder="${t('search_by_name_num_id')}" value="${q.search}" style="width:230px;">
+          <select id="emp-branch"><option value="">${t('all_branches')}</option>${STATE.branches.map(b=>`<option ${q.branch===b?'selected':''}>${b}</option>`).join('')}</select>
+          <select id="emp-title"><option value="">${t('all_titles')}</option>${titles.map(jt=>`<option ${q.title===jt?'selected':''}>${jt}</option>`).join('')}</select>
           <select id="emp-status">
-            <option value="">كل حالات الاستحقاق</option>
-            <option value="eligible" ${q.status==='eligible'?'selected':''}>مستحق</option>
-            <option value="not" ${q.status==='not'?'selected':''}>غير مستحق</option>
+            <option value="">${t('all_eligibility')}</option>
+            <option value="eligible" ${q.status==='eligible'?'selected':''}>${t('eligible')}</option>
+            <option value="not" ${q.status==='not'?'selected':''}>${t('not_eligible')}</option>
           </select>
         </div>
-        ${canManage ? `<button class="btn btn-primary btn-sm" id="add-emp-btn">+ إضافة موظف</button>` : ''}
+        ${canManage ? `<button class="btn btn-primary btn-sm" id="add-emp-btn">${t('add_employee')}</button>` : ''}
       </div>
       <div class="panel-body table-wrap">
         <table>
-          <thead><tr><th>الموظف</th><th>الرقم الوظيفي</th><th>الهوية</th><th>الفرع</th><th>المسمى</th><th>المقاس</th><th>آخر صرف</th><th>الاستحقاق القادم</th><th>الحالة</th><th></th></tr></thead>
+          <thead><tr><th>${t('col_employee')}</th><th>${t('col_employee_number')}</th><th>${t('col_national_id')}</th><th>${t('col_branch')}</th><th>${t('col_job_title')}</th><th>${t('col_size')}</th><th>${t('col_last_issue')}</th><th>${t('col_next_due')}</th><th>${t('col_status')}</th><th></th></tr></thead>
           <tbody>
           ${list.length ? list.map(e=>{
             const elig = employeeEligibility(e);
@@ -1301,14 +1341,14 @@ function employeesView(){
               <td><a href="#" data-emp-detail="${e.id}" style="color:var(--navy-800);font-weight:600;text-decoration:none;">${e.name}</a></td>
               <td>${e.employeeNumber}</td><td>${e.nationalId}</td><td>${e.branch}</td><td>${e.jobTitle}</td><td>${e.size}</td>
               <td>${fmtDate(e.lastIssueDate)}</td><td>${fmtDate(e.nextDueDate)}</td>
-              <td>${elig.eligible? `<span class="badge badge-eligible">مستحق</span>` : `<span class="badge badge-not-eligible">بعد ${elig.daysLeft} يوم</span>`}</td>
+              <td>${elig.eligible? `<span class="badge badge-eligible">${t('eligible')}</span>` : `<span class="badge badge-not-eligible">${t('days_left', elig.daysLeft)}</span>`}</td>
               <td>
-                ${canManage ? `<button class="icon-btn" data-edit-emp="${e.id}" title="تعديل">✎</button>` : ''}
-                ${canManage && elig.eligible ? `<button class="icon-btn" data-new-order="${e.id}" title="طلب جديد">+</button>` : ''}
-                ${canDelete ? `<button class="icon-btn" data-del-emp="${e.id}" title="حذف">🗑</button>` : ''}
+                ${canManage ? `<button class="icon-btn" data-edit-emp="${e.id}" title="${t('edit')}">✎</button>` : ''}
+                ${canManage && elig.eligible ? `<button class="icon-btn" data-new-order="${e.id}" title="${t('new_order')}">+</button>` : ''}
+                ${canDelete ? `<button class="icon-btn" data-del-emp="${e.id}" title="${t('delete')}">🗑</button>` : ''}
               </td>
             </tr>`;
-          }).join('') : `<tr><td colspan="10" class="empty-row">لا يوجد موظفون مطابقون</td></tr>`}
+          }).join('') : `<tr><td colspan="10" class="empty-row">${t('no_matching_employees')}</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -1333,17 +1373,17 @@ function deleteEmployee(empId){
   if(!emp) return;
   const orderCount = STATE.orders.filter(o=>o.employeeId===empId).length;
   const activeOrder = STATE.orders.some(o=>o.employeeId===empId && ![STATUS.DELIVERED, STATUS.REJECTED].includes(o.status));
-  let msg = `حذف الموظف "${emp.name}"؟ لا يمكن التراجع عن هذا الإجراء.`;
+  let msg = t('delete_emp_simple', emp.name);
   if(activeOrder){
-    msg = `الموظف "${emp.name}" لديه طلب يونيفورم قائم حالياً لم يُسلَّم بعد. حذف الموظف لن يحذف الطلب نفسه، لكنك لن تتمكن من الوصول لصفحة سجله بعد الحذف. هل تريد المتابعة؟`;
+    msg = t('delete_emp_active_order', emp.name);
   } else if(orderCount>0){
-    msg = `للموظف "${emp.name}" ${orderCount} طلب/طلبات سابقة في السجل. ستبقى هذه الطلبات في شاشة "الطلبات" لكن لن يمكن الوصول لصفحة سجل الموظف بعد الحذف. هل تريد المتابعة؟`;
+    msg = t('delete_emp_history', emp.name, orderCount);
   }
   if(confirm(msg)){
     STATE.employees = STATE.employees.filter(e=>e.id!==empId);
     persist('employees');
     addAudit('حذف موظف', `${emp.name} — ${emp.employeeNumber}`);
-    toast('تم حذف الموظف');
+    toast(t('employee_deleted'));
     render();
   }
 }
@@ -1359,37 +1399,37 @@ function openEmployeeModal(empId){
 ========================================================= */
 function employeeDetailView(){
   const emp = STATE.employees.find(e=>e.id===STATE.detailId);
-  if(!emp) return `<div class="empty-state"><div class="big">🔍</div>لم يتم العثور على الموظف</div>`;
+  if(!emp) return `<div class="empty-state"><div class="big">🔍</div>${t('not_found_employee')}</div>`;
   const history = STATE.orders.filter(o=>o.employeeId===emp.id).sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate));
   const elig = employeeEligibility(emp);
   return `
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-      <button class="btn btn-ghost btn-sm" id="back-to-emp">→ العودة لقائمة الموظفين</button>
-      ${STATE.currentUser.role==='admin' ? `<button class="btn btn-danger btn-sm" id="del-emp-detail-btn">🗑 حذف الموظف</button>` : ''}
+      <button class="btn btn-ghost btn-sm" id="back-to-emp">${t('back_to_employees')}</button>
+      ${STATE.currentUser.role==='admin' ? `<button class="btn btn-danger btn-sm" id="del-emp-detail-btn">${t('delete_employee_btn')}</button>` : ''}
     </div>
     <div class="panel">
-      <div class="panel-head"><h3>${emp.name}</h3><span class="badge ${elig.eligible?'badge-eligible':'badge-not-eligible'}">${elig.eligible?'مستحق حالياً':'بعد '+elig.daysLeft+' يوم'}</span></div>
+      <div class="panel-head"><h3>${emp.name}</h3><span class="badge ${elig.eligible?'badge-eligible':'badge-not-eligible'}">${elig.eligible?t('eligible_now_badge'):t('days_left', elig.daysLeft)}</span></div>
       <div class="panel-body">
         <div class="grid-2">
-          <div class="info-line"><span>الرقم الوظيفي</span><span>${emp.employeeNumber}</span></div>
-          <div class="info-line"><span>رقم الهوية</span><span>${emp.nationalId}</span></div>
-          <div class="info-line"><span>الفرع</span><span>${emp.branch}</span></div>
-          <div class="info-line"><span>المسمى الوظيفي</span><span>${emp.jobTitle}</span></div>
-          <div class="info-line"><span>المقاس</span><span>${emp.size}</span></div>
-          <div class="info-line"><span>تاريخ آخر صرف</span><span>${fmtDate(emp.lastIssueDate)}</span></div>
+          <div class="info-line"><span>${t('col_employee_number')}</span><span>${emp.employeeNumber}</span></div>
+          <div class="info-line"><span>${t('national_id')}</span><span>${emp.nationalId}</span></div>
+          <div class="info-line"><span>${t('col_branch')}</span><span>${emp.branch}</span></div>
+          <div class="info-line"><span>${t('job_title')}</span><span>${emp.jobTitle}</span></div>
+          <div class="info-line"><span>${t('size')}</span><span>${emp.size}</span></div>
+          <div class="info-line"><span>${t('last_issue_date')}</span><span>${fmtDate(emp.lastIssueDate)}</span></div>
         </div>
       </div>
     </div>
     <div class="panel">
-      <div class="panel-head"><h3>سجل اليونيفورمات المستلمة</h3></div>
+      <div class="panel-head"><h3>${t('received_history')}</h3></div>
       <div class="panel-body table-wrap">
-        <table><thead><tr><th>رقم الطلب</th><th>تاريخ الطلب</th><th>النوع</th><th>المقاس</th><th>السعر</th><th>تاريخ الإنجاز</th><th>تاريخ التسليم</th><th>الحالة</th></tr></thead>
+        <table><thead><tr><th>${t('col_order_no')}</th><th>${t('col_order_date')}</th><th>${t('col_type')}</th><th>${t('col_size')}</th><th>${t('col_price')}</th><th>${t('col_completed_date')}</th><th>${t('col_delivered_date')}</th><th>${t('col_status')}</th></tr></thead>
         <tbody>
         ${history.length? history.map(o=>`<tr>
-          <td>#${o.code}</td><td>${fmtDate(o.createdDate)}</td><td>${o.uniformType}</td><td>${o.size}</td><td>${o.price} ريال</td>
+          <td>#${o.code}</td><td>${fmtDate(o.createdDate)}</td><td>${o.uniformType}</td><td>${o.size}</td><td>${o.price} ${t('currency')}</td>
           <td>${fmtDate(o.completedDate)}</td><td>${fmtDate(o.deliveredDate)}</td>
-          <td><span class="badge ${STATUS_BADGE[o.status]}">${o.status}</span></td>
-        </tr>`).join('') : `<tr><td colspan="8" class="empty-row">لا يوجد سجل بعد</td></tr>`}
+          <td><span class="badge ${STATUS_BADGE[o.status]}">${statusLabel(o.status)}</span></td>
+        </tr>`).join('') : `<tr><td colspan="8" class="empty-row">${t('no_history_yet')}</td></tr>`}
         </tbody></table>
       </div>
     </div>
@@ -1424,28 +1464,28 @@ function ordersView(){
     <div class="panel">
       <div class="panel-head">
         <div class="panel-toolbar">
-          <input id="ord-search" placeholder="بحث برقم الطلب / اسم الموظف" value="${q.search}" style="width:230px;">
+          <input id="ord-search" placeholder="${t('search_order_or_name')}" value="${q.search}" style="width:230px;">
           <select id="ord-status">
-            <option value="">كل الحالات</option>
-            <option value="${INPROGRESS_FILTER}" ${q.status===INPROGRESS_FILTER?'selected':''}>قيد التنفيذ (استلام + تنفيذ)</option>
-            ${Object.values(STATUS).map(s=>`<option ${q.status===s?'selected':''}>${s}</option>`).join('')}
+            <option value="">${t('all_statuses')}</option>
+            <option value="${INPROGRESS_FILTER}" ${q.status===INPROGRESS_FILTER?'selected':''}>${t('inprogress_combined')}</option>
+            ${Object.values(STATUS).map(s=>`<option value="${s}" ${q.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}
           </select>
         </div>
-        ${canManage ? `<button class="btn btn-primary btn-sm" id="add-order-btn">+ طلب يونيفورم جديد</button>`:''}
+        ${canManage ? `<button class="btn btn-primary btn-sm" id="add-order-btn">${t('new_order_btn')}</button>`:''}
       </div>
       <div class="panel-body table-wrap">
         <table>
-          <thead><tr><th>رقم الطلب</th><th>الموظف</th><th>الرقم الوظيفي</th><th>الفرع</th><th>المقاس</th><th>تاريخ الطلب</th><th>الحالة</th><th>السعر</th><th></th></tr></thead>
+          <thead><tr><th>${t('col_order_no')}</th><th>${t('col_employee')}</th><th>${t('col_employee_number')}</th><th>${t('col_branch')}</th><th>${t('col_size')}</th><th>${t('col_order_date')}</th><th>${t('col_status')}</th><th>${t('col_price')}</th><th></th></tr></thead>
           <tbody>
           ${list.length? list.map(o=>`<tr>
             <td>#${o.code}</td><td>${o.employeeName}</td><td>${o.employeeNumber}</td><td>${o.branch}</td><td>${o.size}</td>
-            <td>${fmtDate(o.createdDate)}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${o.status}</span></td><td>${o.price} ريال</td>
+            <td>${fmtDate(o.createdDate)}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${statusLabel(o.status)}</span></td><td>${o.price} ${t('currency')}</td>
             <td style="white-space:nowrap;">
-              <button class="icon-btn" data-order-detail="${o.id}" title="التفاصيل">↗</button>
-              ${canManage ? `<button class="icon-btn" data-order-edit="${o.id}" title="تعديل">✎</button>` : ''}
-              ${canManage ? `<button class="icon-btn" data-order-delete="${o.id}" title="حذف">🗑</button>` : ''}
+              <button class="icon-btn" data-order-detail="${o.id}" title="${t('details')}">↗</button>
+              ${canManage ? `<button class="icon-btn" data-order-edit="${o.id}" title="${t('edit')}">✎</button>` : ''}
+              ${canManage ? `<button class="icon-btn" data-order-delete="${o.id}" title="${t('delete')}">🗑</button>` : ''}
             </td>
-          </tr>`).join('') : `<tr><td colspan="9" class="empty-row">لا توجد طلبات</td></tr>`}
+          </tr>`).join('') : `<tr><td colspan="9" class="empty-row">${t('no_orders')}</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -1471,13 +1511,13 @@ function openOrderEditModal(orderId){
 function deleteOrder(orderId){
   const o = STATE.orders.find(x=>x.id===orderId);
   if(!o) return;
-  if(confirm(`حذف الطلب #${o.code} الخاص بالموظف "${o.employeeName}"؟ لا يمكن التراجع عن هذا الإجراء.`)){
+  if(confirm(t('delete_order_confirm', o.code, o.employeeName))){
     STATE.orders = STATE.orders.filter(x=>x.id!==orderId);
     persist('orders');
     STATE.settings.tailorBalance = Math.max(0, Number(STATE.settings.tailorBalance||0) - Number(o.price||0));
     persist('settings');
     addAudit('حذف طلب يونيفورم', `#${o.code} — ${o.employeeName}`);
-    toast('تم حذف الطلب');
+    toast(t('order_deleted'));
     render();
   }
 }
@@ -1499,13 +1539,13 @@ function notificationsView(){
   const list = STATE.notifications;
   return `
   <div class="panel">
-    <div class="panel-head"><h3>الإشعارات</h3>${list.length? `<button class="btn btn-ghost btn-sm" id="mark-all">تعليم الكل كمقروء</button>`:''}</div>
+    <div class="panel-head"><h3>${t('notifications_title')}</h3>${list.length? `<button class="btn btn-ghost btn-sm" id="mark-all">${t('mark_all_read')}</button>`:''}</div>
     <div class="panel-body" style="padding:0;">
       ${list.length? list.map(n=>`
         <div class="notif-item" style="background:${n.read?'transparent':'var(--blue-100)'}">
           ${n.message}
-          <div class="t">${new Date(n.at).toLocaleString('ar-SA-u-ca-gregory')}</div>
-        </div>`).join('') : `<div class="empty-state"><div class="big">🔔</div>لا توجد إشعارات حتى الآن</div>`}
+          <div class="t">${new Date(n.at).toLocaleString(STATE.lang==='en'?'en-GB':'ar-SA-u-ca-gregory')}</div>
+        </div>`).join('') : `<div class="empty-state"><div class="big">🔔</div>${t('no_notifications_yet')}</div>`}
     </div>
   </div>`;
 }
@@ -1520,14 +1560,14 @@ function bindNotifications(){
 function usersView(){
   return `
   <div class="panel">
-    <div class="panel-head"><h3>المستخدمون</h3><button class="btn btn-primary btn-sm" id="add-user-btn">+ إضافة مستخدم</button></div>
+    <div class="panel-head"><h3>${t('nav_users')}</h3><button class="btn btn-primary btn-sm" id="add-user-btn">${t('add_user')}</button></div>
     <div class="panel-body table-wrap">
-      <table><thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th></th></tr></thead>
+      <table><thead><tr><th>${t('col_full_name')}</th><th>${t('col_username')}</th><th>${t('col_role')}</th><th></th></tr></thead>
       <tbody>
       ${STATE.users.map(u=>`<tr><td>${u.name}</td><td>${u.username}</td><td><span class="tag-pill">${ROLE_LABEL_OF(u.role)}</span></td>
         <td>
-          <button class="icon-btn" data-edit-user="${u.id}" title="تعديل">✎</button>
-          ${u.id!==STATE.currentUser.id? `<button class="icon-btn" data-del-user="${u.id}" title="حذف">🗑</button>`:''}
+          <button class="icon-btn" data-edit-user="${u.id}" title="${t('edit')}">✎</button>
+          ${u.id!==STATE.currentUser.id? `<button class="icon-btn" data-del-user="${u.id}" title="${t('delete')}">🗑</button>`:''}
         </td></tr>`).join('')}
       </tbody></table>
     </div>
@@ -1542,7 +1582,7 @@ function bindUsers(){
   });
   document.querySelectorAll('[data-del-user]').forEach(el=> el.onclick = ()=>{
     const u = STATE.users.find(x=>x.id===el.dataset.delUser);
-    if(confirm(`حذف المستخدم "${u.name}"؟`)){
+    if(confirm(t('confirm_delete_user', u.name))){
       STATE.users = STATE.users.filter(x=>x.id!==u.id);
       persist('users'); addAudit('حذف مستخدم', u.name); render();
     }
@@ -1556,51 +1596,51 @@ function settingsView(){
   const s = STATE.settings;
   return `
   <div class="panel">
-    <div class="panel-head"><h3>الإعدادات العامة</h3></div>
+    <div class="panel-head"><h3>${t('settings_title')}</h3></div>
     <div class="panel-body">
       <div class="grid-2">
-        <div class="field"><label>سعر اليونيفورم (ريال)</label><input id="set-price" type="number" value="${s.price}"></div>
-        <div class="field"><label>مدة الاستحقاق (بالأيام)</label><input id="set-days" type="number" value="${s.eligibilityDays}"></div>
+        <div class="field"><label>${t('uniform_price')}</label><input id="set-price" type="number" value="${s.price}"></div>
+        <div class="field"><label>${t('eligibility_period')}</label><input id="set-days" type="number" value="${s.eligibilityDays}"></div>
       </div>
-      <button class="btn btn-primary" id="save-settings">حفظ الإعدادات</button>
+      <button class="btn btn-primary" id="save-settings">${t('save_settings')}</button>
     </div>
   </div>
   <div class="panel">
-    <div class="panel-head"><h3>الفروع</h3></div>
+    <div class="panel-head"><h3>${t('branches_title')}</h3></div>
     <div class="panel-body">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
         ${STATE.branches.map(b=>`<span class="tag-pill">${b} <button data-del-branch="${b}" style="border:none;background:none;color:var(--red-700);cursor:pointer;">×</button></span>`).join('')}
       </div>
       <div style="display:flex;gap:8px;">
-        <input id="new-branch" placeholder="اسم فرع جديد" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:6px;">
-        <button class="btn btn-ghost btn-sm" id="add-branch-btn">إضافة</button>
+        <input id="new-branch" placeholder="${t('new_branch_placeholder')}" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:6px;">
+        <button class="btn btn-ghost btn-sm" id="add-branch-btn">${t('add_btn')}</button>
       </div>
     </div>
   </div>
   <div class="panel">
-    <div class="panel-head"><h3>المسميات الوظيفية</h3></div>
+    <div class="panel-head"><h3>${t('job_titles_title')}</h3></div>
     <div class="panel-body">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-        ${STATE.jobTitles.map((t,i)=>{
+        ${STATE.jobTitles.map((jt,i)=>{
           if(STATE.editingJobTitleIndex===i){
             return `<span class="tag-pill" style="display:inline-flex;align-items:center;gap:6px;padding:3px 6px;">
-              <input id="edit-jobtitle-input" value="${t}" style="border:1px solid var(--navy-700);border-radius:5px;padding:3px 8px;font-size:12px;width:150px;">
-              <button data-save-jobtitle="${i}" title="حفظ" style="border:none;background:none;color:var(--green-700);cursor:pointer;font-size:14px;font-weight:700;">✓</button>
-              <button data-cancel-jobtitle title="إلغاء" style="border:none;background:none;color:var(--text-600);cursor:pointer;font-size:14px;">×</button>
+              <input id="edit-jobtitle-input" value="${jt}" style="border:1px solid var(--navy-700);border-radius:5px;padding:3px 8px;font-size:12px;width:150px;">
+              <button data-save-jobtitle="${i}" title="${t('tailor_save')}" style="border:none;background:none;color:var(--green-700);cursor:pointer;font-size:14px;font-weight:700;">✓</button>
+              <button data-cancel-jobtitle title="${t('tailor_cancel')}" style="border:none;background:none;color:var(--text-600);cursor:pointer;font-size:14px;">×</button>
             </span>`;
           }
           return `<span class="tag-pill" style="display:inline-flex;align-items:center;gap:7px;">
-            ${t}
-            <button data-edit-jobtitle="${i}" title="تعديل" style="border:none;background:none;color:var(--navy-700);cursor:pointer;font-size:11.5px;padding:0;">✎</button>
-            <button data-del-jobtitle="${i}" title="حذف" style="border:none;background:none;color:var(--red-700);cursor:pointer;font-size:13px;padding:0;">×</button>
+            ${jt}
+            <button data-edit-jobtitle="${i}" title="${t('edit')}" style="border:none;background:none;color:var(--navy-700);cursor:pointer;font-size:11.5px;padding:0;">✎</button>
+            <button data-del-jobtitle="${i}" title="${t('delete')}" style="border:none;background:none;color:var(--red-700);cursor:pointer;font-size:13px;padding:0;">×</button>
           </span>`;
-        }).join('') || `<span class="helper">لا توجد مسميات وظيفية بعد — أضف أول مسمى بالأسفل.</span>`}
+        }).join('') || `<span class="helper">${t('no_job_titles_yet')}</span>`}
       </div>
       <div style="display:flex;gap:8px;">
-        <input id="new-jobtitle" placeholder="مسمى وظيفي جديد" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:6px;">
-        <button class="btn btn-ghost btn-sm" id="add-jobtitle-btn">إضافة</button>
+        <input id="new-jobtitle" placeholder="${t('new_job_title_placeholder')}" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:6px;">
+        <button class="btn btn-ghost btn-sm" id="add-jobtitle-btn">${t('add_btn')}</button>
       </div>
-      <div class="helper">تعديل مسمى موجود يحدّث تلقائياً كل الموظفين المسجّلين تحته إلى الاسم الجديد.</div>
+      <div class="helper">${t('job_titles_helper')}</div>
     </div>
   </div>`;
 }
@@ -1608,10 +1648,10 @@ function bindSettings(){
   document.getElementById('save-settings').onclick = ()=>{
     const price = Number(document.getElementById('set-price').value);
     const days = Number(document.getElementById('set-days').value);
-    if(price<=0 || days<=0){ toast('القيم يجب أن تكون أكبر من صفر','err'); return; }
+    if(price<=0 || days<=0){ toast(t('settings_positive_error'),'err'); return; }
     STATE.settings = {price, eligibilityDays: days};
     persist('settings'); addAudit('تعديل الإعدادات', `السعر: ${price} ريال، مدة الاستحقاق: ${days} يوم`);
-    toast('تم حفظ الإعدادات'); render();
+    toast(t('settings_saved')); render();
   };
   document.querySelectorAll('[data-del-branch]').forEach(el=> el.onclick = ()=>{
     STATE.branches = STATE.branches.filter(b=>b!==el.dataset.delBranch);
@@ -1637,8 +1677,8 @@ function bindSettings(){
     const i = Number(el.dataset.saveJobtitle);
     const oldTitle = STATE.jobTitles[i];
     const newTitle = document.getElementById('edit-jobtitle-input').value.trim();
-    if(!newTitle){ toast('الرجاء إدخال اسم المسمى الوظيفي','err'); return; }
-    if(newTitle!==oldTitle && STATE.jobTitles.includes(newTitle)){ toast('هذا المسمى موجود مسبقاً','err'); return; }
+    if(!newTitle){ toast(t('job_title_name_required'),'err'); return; }
+    if(newTitle!==oldTitle && STATE.jobTitles.includes(newTitle)){ toast(t('job_title_exists'),'err'); return; }
     if(newTitle!==oldTitle){
       STATE.jobTitles[i] = newTitle;
       let affected = 0;
@@ -1646,7 +1686,7 @@ function bindSettings(){
       persist('jobTitles');
       if(affected>0) persist('employees');
       addAudit('تعديل مسمى وظيفي', `${oldTitle} ← ${newTitle}` + (affected? ` (تم تحديث ${affected} موظف)`:''));
-      toast('تم تحديث المسمى الوظيفي');
+      toast(t('job_title_updated'));
     }
     STATE.editingJobTitleIndex = null;
     render();
@@ -1655,14 +1695,12 @@ function bindSettings(){
     const i = Number(el.dataset.delJobtitle);
     const title = STATE.jobTitles[i];
     const usedBy = STATE.employees.filter(e=>e.jobTitle===title).length;
-    const msg = usedBy>0
-      ? `يوجد ${usedBy} موظف مسجّل حالياً بالمسمى "${title}". حذفه من القائمة لن يغيّر بيانات هؤلاء الموظفين، لكنه لن يظهر كخيار عند إضافة موظفين جدد. هل تريد المتابعة؟`
-      : `حذف المسمى الوظيفي "${title}"؟`;
+    const msg = usedBy>0 ? t('job_title_delete_used', title, usedBy) : t('job_title_delete_simple', title);
     if(confirm(msg)){
-      STATE.jobTitles = STATE.jobTitles.filter((t,idx)=> idx!==i);
+      STATE.jobTitles = STATE.jobTitles.filter((jt,idx)=> idx!==i);
       persist('jobTitles');
       addAudit('حذف مسمى وظيفي', title);
-      toast('تم حذف المسمى الوظيفي');
+      toast(t('job_title_deleted'));
       render();
     }
   });
@@ -1670,11 +1708,11 @@ function bindSettings(){
   if(addJobTitleBtn) addJobTitleBtn.onclick = ()=>{
     const v = document.getElementById('new-jobtitle').value.trim();
     if(!v) return;
-    if(STATE.jobTitles.includes(v)){ toast('هذا المسمى موجود مسبقاً','err'); return; }
+    if(STATE.jobTitles.includes(v)){ toast(t('job_title_exists'),'err'); return; }
     STATE.jobTitles.push(v);
     persist('jobTitles');
     addAudit('إضافة مسمى وظيفي', v);
-    toast('تمت إضافة المسمى الوظيفي');
+    toast(t('job_title_added'));
     render();
   };
 }
@@ -1685,11 +1723,11 @@ function bindSettings(){
 function auditView(){
   return `
   <div class="panel">
-    <div class="panel-head"><h3>سجل العمليات</h3></div>
+    <div class="panel-head"><h3>${t('audit_title')}</h3></div>
     <div class="panel-body table-wrap">
-      <table><thead><tr><th>العملية</th><th>التفاصيل</th><th>بواسطة</th><th>الوقت</th></tr></thead>
+      <table><thead><tr><th>${t('col_action')}</th><th>${t('col_details')}</th><th>${t('col_by')}</th><th>${t('col_time')}</th></tr></thead>
       <tbody>
-      ${STATE.auditLogs.length? STATE.auditLogs.map(a=>`<tr><td><b>${a.action}</b></td><td>${a.details||''}</td><td>${a.user}</td><td>${new Date(a.at).toLocaleString('ar-SA-u-ca-gregory')}</td></tr>`).join('') : `<tr><td colspan="4" class="empty-row">لا يوجد سجل بعد</td></tr>`}
+      ${STATE.auditLogs.length? STATE.auditLogs.map(a=>`<tr><td><b>${a.action}</b></td><td>${a.details||''}</td><td>${a.user}</td><td>${new Date(a.at).toLocaleString(STATE.lang==='en'?'en-GB':'ar-SA-u-ca-gregory')}</td></tr>`).join('') : `<tr><td colspan="4" class="empty-row">${t('no_audit_yet')}</td></tr>`}
       </tbody></table>
     </div>
   </div>`;
@@ -1718,37 +1756,37 @@ function employeeModal(emp){
   return `
   <div class="overlay" id="modal-overlay">
     <div class="modal">
-      <div class="modal-head"><h3>${emp?'تعديل بيانات موظف':'إضافة موظف جديد'}</h3><button class="modal-close" id="modal-close">✕</button></div>
+      <div class="modal-head"><h3>${emp?t('modal_edit_employee'):t('modal_add_employee')}</h3><button class="modal-close" id="modal-close">✕</button></div>
       <div class="modal-body">
         <div class="grid-2">
-          <div class="field"><label>اسم الموظف</label><input id="f-name" value="${emp?.name||''}"></div>
-          <div class="field"><label>الرقم الوظيفي</label><input id="f-num" value="${emp?.employeeNumber||''}"></div>
-          <div class="field"><label>رقم الهوية / الإقامة</label><input id="f-nid" value="${emp?.nationalId||''}"></div>
-          <div class="field"><label>الفرع</label><select id="f-branch">${STATE.branches.map(b=>`<option ${emp?.branch===b?'selected':''}>${b}</option>`).join('')}</select></div>
-          <div class="field"><label>المسمى الوظيفي</label>
+          <div class="field"><label>${t('name')}</label><input id="f-name" value="${emp?.name||''}"></div>
+          <div class="field"><label>${t('employee_number')}</label><input id="f-num" value="${emp?.employeeNumber||''}"></div>
+          <div class="field"><label>${t('national_id')}</label><input id="f-nid" value="${emp?.nationalId||''}"></div>
+          <div class="field"><label>${t('col_branch')}</label><select id="f-branch">${STATE.branches.map(b=>`<option ${emp?.branch===b?'selected':''}>${b}</option>`).join('')}</select></div>
+          <div class="field"><label>${t('job_title')}</label>
             <select id="f-title">
-              ${titles.map(t=>`<option ${emp?.jobTitle===t?'selected':''}>${t}</option>`).join('')}
-              <option value="__new__">+ إضافة مسمى وظيفي جديد</option>
+              ${titles.map(jt=>`<option ${emp?.jobTitle===jt?'selected':''}>${jt}</option>`).join('')}
+              <option value="__new__">${t('new_job_title_option')}</option>
             </select>
-            <input id="f-title-new" placeholder="اكتب المسمى الوظيفي الجديد" style="display:none;margin-top:8px;">
+            <input id="f-title-new" placeholder="${t('new_job_title_input_placeholder')}" style="display:none;margin-top:8px;">
           </div>
-          <div class="field"><label>المقاس</label>
+          <div class="field"><label>${t('size')}</label>
             <select id="f-size">${['S','M','L','XL','XXL','XXXL'].map(s=>`<option ${emp?.size===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
         </div>
         ${emp && STATE.currentUser.role==='admin' ? `
         <div style="margin-top:6px;padding-top:16px;border-top:1px dashed var(--border);">
-          <div class="helper" style="margin:0 0 10px;font-weight:700;color:var(--navy-800);">تعديل استحقاق اليونيفورم (صلاحية المدير)</div>
+          <div class="helper" style="margin:0 0 10px;font-weight:700;color:var(--navy-800);">${t('admin_eligibility_section')}</div>
           <div class="grid-2">
-            <div class="field"><label>تاريخ آخر صرف</label><input id="f-last-issue" type="date" value="${emp.lastIssueDate||''}"></div>
-            <div class="field"><label>تاريخ الاستحقاق القادم</label><input id="f-next-due" type="date" value="${emp.nextDueDate||''}"></div>
+            <div class="field"><label>${t('last_issue_date_field')}</label><input id="f-last-issue" type="date" value="${emp.lastIssueDate||''}"></div>
+            <div class="field"><label>${t('next_due_date_field')}</label><input id="f-next-due" type="date" value="${emp.nextDueDate||''}"></div>
           </div>
-          <div class="helper">تعديل هذين التاريخين يغيّر مباشرة موعد استحقاق الموظف لصرف يونيفورم جديد. اترك الحقلين فارغين لجعل الموظف مستحقاً فوراً.</div>
+          <div class="helper">${t('admin_eligibility_helper')}</div>
         </div>` : ''}
       </div>
       <div class="modal-foot">
-        <button class="btn btn-primary" id="save-emp">${emp?'حفظ التعديلات':'إضافة الموظف'}</button>
-        <button class="btn btn-ghost" id="cancel-emp">إلغاء</button>
+        <button class="btn btn-primary" id="save-emp">${emp?t('save_changes'):t('add_employee_btn')}</button>
+        <button class="btn btn-ghost" id="cancel-emp">${t('cancel')}</button>
       </div>
     </div>
   </div>`;
@@ -1762,13 +1800,13 @@ function bindEmployeeModal(emp){
 
   document.getElementById('save-emp').onclick = ()=>{
     const name=val('f-name'), num=val('f-num'), nid=val('f-nid'), branch=val('f-branch'), size=val('f-size');
-    if(!name||!num||!nid){ toast('الرجاء تعبئة الاسم والرقم الوظيفي والهوية','err'); return; }
-    if(!emp && STATE.employees.some(e=>e.employeeNumber===num)){ toast('الرقم الوظيفي مستخدم مسبقاً','err'); return; }
+    if(!name||!num||!nid){ toast(t('require_name_num_id'),'err'); return; }
+    if(!emp && STATE.employees.some(e=>e.employeeNumber===num)){ toast(t('employee_number_taken'),'err'); return; }
 
     let title = titleSel.value;
     if(title==='__new__'){
       const newTitle = titleNewInput.value.trim();
-      if(!newTitle){ toast('الرجاء كتابة المسمى الوظيفي الجديد','err'); return; }
+      if(!newTitle){ toast(t('require_job_title_new'),'err'); return; }
       if(STATE.jobTitles.includes(newTitle)){
         title = newTitle; // موجود أصلاً بنفس الاسم، استخدمه مباشرة دون تكرار
       } else {
@@ -1795,11 +1833,11 @@ function bindEmployeeModal(emp){
         }
       }
       addAudit('تعديل بيانات موظف', name);
-      toast('تم حفظ التعديلات');
+      toast(t('employee_updated'));
     } else {
       STATE.employees.push({id:uid('e'), name, employeeNumber:num, nationalId:nid, branch, jobTitle:title, size, lastIssueDate:null, nextDueDate:null, uniformType:'ثوب'});
       addAudit('إضافة موظف جديد', name);
-      toast('تمت إضافة الموظف');
+      toast(t('employee_added'));
     }
     persist('employees'); closeModal();
   };
@@ -1814,32 +1852,32 @@ function orderModal(m){
   return `
   <div class="overlay" id="modal-overlay">
     <div class="modal">
-      <div class="modal-head"><h3>طلب يونيفورم جديد</h3><button class="modal-close" id="modal-close">✕</button></div>
+      <div class="modal-head"><h3>${t('modal_new_order')}</h3><button class="modal-close" id="modal-close">✕</button></div>
       <div class="modal-body">
         <div class="field">
-          <label>اختر الموظف</label>
+          <label>${t('select_employee')}</label>
           <select id="o-emp">
-            <option value="">— اختر —</option>
+            <option value="">${t('select_placeholder')}</option>
             ${emps.map(e=>`<option value="${e.id}" ${m.preselectEmpId===e.id?'selected':''}>${e.name} — ${e.employeeNumber}</option>`).join('')}
           </select>
         </div>
         <div id="o-emp-info"></div>
         <div class="grid-2">
-          <div class="field"><label>نوع اليونيفورم</label><select id="o-type"><option>ثوب</option></select></div>
-          <div class="field"><label>السعر</label><input id="o-price" value="${STATE.settings.price} ريال" disabled></div>
+          <div class="field"><label>${t('uniform_type')}</label><select id="o-type"><option>ثوب</option></select></div>
+          <div class="field"><label>${t('price')}</label><input id="o-price" value="${STATE.settings.price} ${t('currency')}" disabled></div>
         </div>
         <div id="o-eligibility"></div>
         ${isAdmin? `
         <div class="checkbox-row" style="margin-top:6px;">
-          <input type="checkbox" id="o-override"> <label for="o-override">تجاوز شرط الاستحقاق (صلاحية المدير)</label>
+          <input type="checkbox" id="o-override"> <label for="o-override">${t('override_checkbox')}</label>
         </div>
         <div class="field" id="o-reason-wrap" style="display:none;margin-top:10px;">
-          <label>سبب الاستثناء</label><textarea id="o-reason" rows="2" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;"></textarea>
+          <label>${t('exception_reason')}</label><textarea id="o-reason" rows="2" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;"></textarea>
         </div>` : ''}
       </div>
       <div class="modal-foot">
-        <button class="btn btn-primary" id="save-order">إرسال الطلب إلى الخياط</button>
-        <button class="btn btn-ghost" id="cancel-order">إلغاء</button>
+        <button class="btn btn-primary" id="save-order">${t('submit_to_tailor')}</button>
+        <button class="btn btn-ghost" id="cancel-order">${t('cancel')}</button>
       </div>
     </div>
   </div>`;
@@ -1856,16 +1894,16 @@ function bindOrderModal(){
     if(!emp){ infoBox.innerHTML=''; eligBox.innerHTML=''; return; }
     infoBox.innerHTML = `
       <div class="grid-2" style="margin:4px 0 10px;">
-        <div class="info-line"><span>الفرع</span><span>${emp.branch}</span></div>
-        <div class="info-line"><span>المسمى الوظيفي</span><span>${emp.jobTitle}</span></div>
-        <div class="info-line"><span>المقاس</span><span>${emp.size}</span></div>
-        <div class="info-line"><span>رقم الهوية</span><span>${emp.nationalId}</span></div>
+        <div class="info-line"><span>${t('col_branch')}</span><span>${emp.branch}</span></div>
+        <div class="info-line"><span>${t('job_title')}</span><span>${emp.jobTitle}</span></div>
+        <div class="info-line"><span>${t('size')}</span><span>${emp.size}</span></div>
+        <div class="info-line"><span>${t('national_id')}</span><span>${emp.nationalId}</span></div>
       </div>`;
     const elig = employeeEligibility(emp);
     if(elig.eligible){
-      eligBox.innerHTML = `<div class="alert alert-green">الموظف مستحق لصرف يونيفورم جديد.</div>`;
+      eligBox.innerHTML = `<div class="alert alert-green">${t('eligible_alert')}</div>`;
     } else {
-      eligBox.innerHTML = `<div class="alert alert-red">لا يمكن إنشاء طلب يونيفورم جديد لهذا الموظف. الموظف استلم آخر يونيفورم بتاريخ ${fmtDate(emp.lastIssueDate)}، والاستحقاق القادم بتاريخ ${fmtDate(emp.nextDueDate)} (بعد ${elig.daysLeft} يوم).</div>`;
+      eligBox.innerHTML = `<div class="alert alert-red">${t('not_eligible_detail', fmtDate(emp.lastIssueDate), fmtDate(emp.nextDueDate), elig.daysLeft)}</div>`;
     }
   }
   empSel.onchange = refreshEmp;
@@ -1877,20 +1915,20 @@ function bindOrderModal(){
 
   document.getElementById('save-order').onclick = ()=>{
     const emp = STATE.employees.find(e=>e.id===empSel.value);
-    if(!emp){ toast('الرجاء اختيار موظف','err'); return; }
+    if(!emp){ toast(t('require_select_employee'),'err'); return; }
     const elig = employeeEligibility(emp);
     const isAdmin = STATE.currentUser.role==='admin';
     let exceptionReason = null;
     if(!elig.eligible){
       if(isAdmin && overrideCk && overrideCk.checked){
         exceptionReason = document.getElementById('o-reason').value.trim();
-        if(!exceptionReason){ toast('يجب تسجيل سبب الاستثناء','err'); return; }
+        if(!exceptionReason){ toast(t('require_exception_reason'),'err'); return; }
       } else {
-        toast('الموظف غير مستحق لصرف يونيفورم جديد حالياً','err'); return;
+        toast(t('not_eligible_error'),'err'); return;
       }
     }
     if(STATE.orders.some(o=>o.employeeId===emp.id && ![STATUS.DELIVERED, STATUS.REJECTED].includes(o.status))){
-      toast('يوجد طلب قائم بالفعل لهذا الموظف','err'); return;
+      toast(t('existing_order_error'),'err'); return;
     }
     const order = {
       id:uid('o'), code: String(1000+STATE.orders.length+1),
@@ -1905,7 +1943,7 @@ function bindOrderModal(){
     persist('settings');
     addAudit('إنشاء طلب يونيفورم', `${emp.name} — طلب #${order.code}` + (exceptionReason? ` (استثناء: ${exceptionReason})`:''));
     addNotification(`تم إرسال طلب يونيفورم جديد إلى الخياط — الموظف ${emp.name} (#${order.code}).`);
-    toast('تم إرسال الطلب إلى الخياط');
+    toast(t('order_sent'));
     closeModal();
   };
   document.getElementById('cancel-order').onclick = closeModal;
@@ -1916,27 +1954,27 @@ function orderEditModal(o){
   return `
   <div class="overlay" id="modal-overlay">
     <div class="modal">
-      <div class="modal-head"><h3>تعديل الطلب #${o.code}</h3><button class="modal-close" id="modal-close">✕</button></div>
+      <div class="modal-head"><h3>${t('modal_edit_order', o.code)}</h3><button class="modal-close" id="modal-close">✕</button></div>
       <div class="modal-body">
         <div class="grid-2" style="margin-bottom:14px;">
-          <div class="info-line"><span>الموظف</span><span>${o.employeeName}</span></div>
-          <div class="info-line"><span>الرقم الوظيفي</span><span>${o.employeeNumber}</span></div>
+          <div class="info-line"><span>${t('col_employee')}</span><span>${o.employeeName}</span></div>
+          <div class="info-line"><span>${t('col_employee_number')}</span><span>${o.employeeNumber}</span></div>
         </div>
         <div class="grid-2">
-          <div class="field"><label>نوع اليونيفورم</label><input id="oe-type" value="${o.uniformType||''}"></div>
-          <div class="field"><label>المقاس</label>
+          <div class="field"><label>${t('uniform_type')}</label><input id="oe-type" value="${o.uniformType||''}"></div>
+          <div class="field"><label>${t('size')}</label>
             <select id="oe-size">${['S','M','L','XL','XXL','XXXL'].map(s=>`<option ${o.size===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
-          <div class="field"><label>السعر (ريال)</label><input id="oe-price" type="number" value="${o.price}"></div>
-          <div class="field"><label>الحالة</label>
-            <select id="oe-status">${Object.values(STATUS).map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>
+          <div class="field"><label>${t('col_price')} (${t('currency')})</label><input id="oe-price" type="number" value="${o.price}"></div>
+          <div class="field"><label>${t('status_field')}</label>
+            <select id="oe-status">${Object.values(STATUS).map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}</select>
           </div>
         </div>
-        <div class="helper">تغيير الحالة هنا يُستخدم فقط لتصحيح خطأ إداري. لتحديث سير العمل الطبيعي (استلام، تنفيذ، تسليم) استخدم أزرار "التفاصيل".</div>
+        <div class="helper">${t('order_edit_helper')}</div>
       </div>
       <div class="modal-foot">
-        <button class="btn btn-primary" id="save-order-edit">حفظ التعديلات</button>
-        <button class="btn btn-ghost" id="cancel-order-edit">إلغاء</button>
+        <button class="btn btn-primary" id="save-order-edit">${t('save_changes')}</button>
+        <button class="btn btn-ghost" id="cancel-order-edit">${t('cancel')}</button>
       </div>
     </div>
   </div>`;
@@ -1947,8 +1985,8 @@ function bindOrderEditModal(o){
     const size = document.getElementById('oe-size').value;
     const price = Number(document.getElementById('oe-price').value);
     const status = document.getElementById('oe-status').value;
-    if(!type){ toast('الرجاء تعبئة نوع اليونيفورم','err'); return; }
-    if(!price || price<=0){ toast('السعر يجب أن يكون أكبر من صفر','err'); return; }
+    if(!type){ toast(t('require_uniform_type'),'err'); return; }
+    if(!price || price<=0){ toast(t('require_positive_price'),'err'); return; }
     const oldStatus = o.status;
     const oldPrice = Number(o.price||0);
     Object.assign(o, {uniformType:type, size, price, status});
@@ -1970,7 +2008,7 @@ function bindOrderEditModal(o){
     }
     persist('orders');
     addAudit('تعديل طلب يونيفورم', `#${o.code} — ${o.employeeName}` + (status!==oldStatus? ` (الحالة: ${oldStatus} ← ${status})`:''));
-    toast('تم حفظ تعديلات الطلب');
+    toast(t('order_edit_saved'));
     closeModal();
   };
   document.getElementById('cancel-order-edit').onclick = closeModal;
@@ -1980,55 +2018,55 @@ function bindOrderEditModal(o){
 function orderDetailModal(o){
   const role = STATE.currentUser.role;
   const steps = [
-    {key:STATUS.NEW, label:'تم إنشاء الطلب', date:o.createdDate},
-    {key:STATUS.RECEIVED, label:'استلام الخياط للطلب', date:o.receivedDate},
-    {key:STATUS.PROGRESS, label:'قيد التنفيذ', date:o.progressDate},
-    {key:STATUS.DONE, label:'تم الإنجاز', date:o.completedDate},
-    {key:STATUS.DELIVERED, label:'تم التسليم للموظف', date:o.deliveredDate},
+    {key:STATUS.NEW, label:statusLabel(STATUS.NEW), date:o.createdDate},
+    {key:STATUS.RECEIVED, label:statusLabel(STATUS.RECEIVED), date:o.receivedDate},
+    {key:STATUS.PROGRESS, label:statusLabel(STATUS.PROGRESS), date:o.progressDate},
+    {key:STATUS.DONE, label:statusLabel(STATUS.DONE), date:o.completedDate},
+    {key:STATUS.DELIVERED, label:statusLabel(STATUS.DELIVERED), date:o.deliveredDate},
   ];
   const order = ['created', STATUS.NEW, STATUS.RECEIVED, STATUS.PROGRESS, STATUS.DONE, STATUS.DELIVERED];
   const curIdx = order.indexOf(o.status);
 
   let tailorActions = '';
   if(role==='tailor' || role==='admin'){
-    if(o.status===STATUS.NEW) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.RECEIVED}">تم استلام الطلب</button>`;
-    else if(o.status===STATUS.RECEIVED) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.PROGRESS}">بدء التنفيذ</button>`;
-    else if(o.status===STATUS.PROGRESS) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.DONE}">تم الإنجاز</button>`;
-    if([STATUS.NEW,STATUS.RECEIVED,STATUS.PROGRESS].includes(o.status)) tailorActions += ` <button class="btn btn-danger btn-sm" data-set-status="${STATUS.REJECTED}">طلب تعديل / رفض</button>`;
+    if(o.status===STATUS.NEW) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.RECEIVED}">${t('mark_received')}</button>`;
+    else if(o.status===STATUS.RECEIVED) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.PROGRESS}">${t('start_progress')}</button>`;
+    else if(o.status===STATUS.PROGRESS) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.DONE}">${t('mark_done')}</button>`;
+    if([STATUS.NEW,STATUS.RECEIVED,STATUS.PROGRESS].includes(o.status)) tailorActions += ` <button class="btn btn-danger btn-sm" data-set-status="${STATUS.REJECTED}">${t('reject_edit')}</button>`;
   }
   let hrActions = '';
   if(hasHRAccess(role) && o.status===STATUS.DONE){
-    hrActions = `<button class="btn btn-primary btn-sm" data-set-status="${STATUS.DELIVERED}">تسجيل تسليم اليونيفورم للموظف</button>`;
+    hrActions = `<button class="btn btn-primary btn-sm" data-set-status="${STATUS.DELIVERED}">${t('register_delivery')}</button>`;
   }
 
   return `
   <div class="overlay" id="modal-overlay">
     <div class="modal wide">
-      <div class="modal-head"><h3>تفاصيل الطلب #${o.code}</h3><button class="modal-close" id="modal-close">✕</button></div>
+      <div class="modal-head"><h3>${t('modal_order_details', o.code)}</h3><button class="modal-close" id="modal-close">✕</button></div>
       <div class="modal-body">
         <div class="grid-2" style="margin-bottom:18px;">
-          <div class="info-line"><span>الموظف</span><span>${o.employeeName}</span></div>
-          <div class="info-line"><span>الرقم الوظيفي</span><span>${o.employeeNumber}</span></div>
-          <div class="info-line"><span>الفرع</span><span>${o.branch}</span></div>
-          <div class="info-line"><span>المقاس</span><span>${o.size}</span></div>
-          <div class="info-line"><span>نوع اليونيفورم</span><span>${o.uniformType}</span></div>
-          <div class="info-line"><span>السعر</span><span>${o.price} ريال</span></div>
+          <div class="info-line"><span>${t('col_employee')}</span><span>${o.employeeName}</span></div>
+          <div class="info-line"><span>${t('col_employee_number')}</span><span>${o.employeeNumber}</span></div>
+          <div class="info-line"><span>${t('col_branch')}</span><span>${o.branch}</span></div>
+          <div class="info-line"><span>${t('size')}</span><span>${o.size}</span></div>
+          <div class="info-line"><span>${t('uniform_type')}</span><span>${o.uniformType}</span></div>
+          <div class="info-line"><span>${t('price')}</span><span>${o.price} ${t('currency')}</span></div>
         </div>
-        ${o.exceptionReason? `<div class="alert alert-amber">تم إنشاء هذا الطلب باستثناء إداري — السبب: ${o.exceptionReason}</div>`:''}
-        ${o.status===STATUS.REJECTED? `<div class="alert alert-red">هذا الطلب مرفوض / يحتاج تعديل.</div>`:''}
-        <h4 style="margin:18px 0 10px;font-size:13.5px;">مسار الطلب</h4>
+        ${o.exceptionReason? `<div class="alert alert-amber">${t('exception_alert', o.exceptionReason)}</div>`:''}
+        ${o.status===STATUS.REJECTED? `<div class="alert alert-red">${t('rejected_alert')}</div>`:''}
+        <h4 style="margin:18px 0 10px;font-size:13.5px;">${t('order_path')}</h4>
         <ul class="timeline">
           ${steps.map((s,i)=>`
             <li class="${o.status!==STATUS.REJECTED && curIdx>=order.indexOf(s.key) ? 'done':''}">
               ${i<steps.length-1?'<div class="line"></div>':''}
               <div class="dot"></div>
-              <div><div class="tl-title">${s.label}</div><div class="tl-date">${s.date? fmtDate(s.date): 'لم يحدث بعد'}</div></div>
+              <div><div class="tl-title">${s.label}</div><div class="tl-date">${s.date? fmtDate(s.date): t('not_happened_yet')}</div></div>
             </li>`).join('')}
         </ul>
       </div>
       <div class="modal-foot" style="flex-wrap:wrap;">
         ${tailorActions}${hrActions}
-        <button class="btn btn-ghost" id="close-order-detail" style="margin-inline-start:auto;">إغلاق</button>
+        <button class="btn btn-ghost" id="close-order-detail" style="margin-inline-start:auto;">${t('close')}</button>
       </div>
     </div>
   </div>`;
@@ -2037,7 +2075,7 @@ function bindOrderDetailModal(o){
   document.querySelectorAll('[data-set-status]').forEach(btn=>{
     btn.onclick = ()=>{
       const newStatus = btn.dataset.setStatus;
-      if(newStatus===STATUS.DELIVERED && o.status!==STATUS.DONE){ toast('لا يمكن تسجيل التسليم قبل إنجاز الطلب','err'); return; }
+      if(newStatus===STATUS.DELIVERED && o.status!==STATUS.DONE){ toast(t('delivered_before_done_error'),'err'); return; }
       o.status = newStatus;
       const today = todayISO();
       if(newStatus===STATUS.RECEIVED) o.receivedDate = today;
@@ -2061,7 +2099,7 @@ function bindOrderDetailModal(o){
       }
       persist('orders');
       addAudit('تغيير حالة طلب', `#${o.code} — ${o.employeeName} → ${newStatus}`);
-      toast('تم تحديث حالة الطلب');
+      toast(t('order_status_updated'));
       closeModal();
     };
   });
@@ -2071,29 +2109,29 @@ function bindOrderDetailModal(o){
 /* ---- User modal (admin add/edit user) ---- */
 function userModal(editUser){
   const roles = [
-    {v:'hr', l:'الموارد البشرية'},
-    {v:'branch_manager', l:'مدير فروع'},
-    {v:'tailor', l:'الخياط'},
-    {v:'admin', l:'مدير النظام'},
+    {v:'hr', l:ROLE_LABEL_OF('hr')},
+    {v:'branch_manager', l:ROLE_LABEL_OF('branch_manager')},
+    {v:'tailor', l:ROLE_LABEL_OF('tailor')},
+    {v:'admin', l:ROLE_LABEL_OF('admin')},
   ];
   return `
   <div class="overlay" id="modal-overlay">
     <div class="modal">
-      <div class="modal-head"><h3>${editUser? 'تعديل بيانات المستخدم' : 'إضافة مستخدم جديد'}</h3><button class="modal-close" id="modal-close">✕</button></div>
+      <div class="modal-head"><h3>${editUser? t('modal_edit_user') : t('modal_add_user')}</h3><button class="modal-close" id="modal-close">✕</button></div>
       <div class="modal-body">
-        <div class="field"><label>الاسم الكامل</label><input id="u-name" value="${editUser?.name||''}"></div>
-        <div class="field"><label>اسم المستخدم</label><input id="u-username" value="${editUser?.username||''}"></div>
+        <div class="field"><label>${t('full_name_field')}</label><input id="u-name" value="${editUser?.name||''}"></div>
+        <div class="field"><label>${t('username')}</label><input id="u-username" value="${editUser?.username||''}"></div>
         <div class="field">
-          <label>كلمة المرور${editUser? ' (اتركها فارغة للإبقاء على كلمة المرور الحالية)':''}</label>
+          <label>${editUser? t('password_field_edit') : t('password_field_new')}</label>
           <input id="u-password" type="text" value="">
         </div>
-        <div class="field"><label>الدور</label>
+        <div class="field"><label>${t('role_field')}</label>
           <select id="u-role">${roles.map(r=>`<option value="${r.v}" ${editUser?.role===r.v?'selected':''}>${r.l}</option>`).join('')}</select>
         </div>
       </div>
       <div class="modal-foot">
-        <button class="btn btn-primary" id="save-user">${editUser? 'حفظ التعديلات':'إضافة المستخدم'}</button>
-        <button class="btn btn-ghost" id="cancel-user">إلغاء</button>
+        <button class="btn btn-primary" id="save-user">${editUser? t('save_changes') : t('add_user')}</button>
+        <button class="btn btn-ghost" id="cancel-user">${t('cancel')}</button>
       </div>
     </div>
   </div>`;
@@ -2101,10 +2139,10 @@ function userModal(editUser){
 function bindUserModal(editUser){
   document.getElementById('save-user').onclick = ()=>{
     const name=val('u-name'), username=val('u-username'), password=val('u-password'), role=document.getElementById('u-role').value;
-    if(!name||!username){ toast('الرجاء تعبئة الاسم واسم المستخدم','err'); return; }
-    if(!editUser && !password){ toast('الرجاء إدخال كلمة مرور','err'); return; }
+    if(!name||!username){ toast(t('require_name_username'),'err'); return; }
+    if(!editUser && !password){ toast(t('require_password'),'err'); return; }
     const usernameTaken = STATE.users.some(u=>u.username===username && (!editUser || u.id!==editUser.id));
-    if(usernameTaken){ toast('اسم المستخدم مستخدم مسبقاً','err'); return; }
+    if(usernameTaken){ toast(t('username_taken'),'err'); return; }
     if(editUser){
       editUser.name = name;
       editUser.username = username;
@@ -2112,11 +2150,11 @@ function bindUserModal(editUser){
       if(password) editUser.password = password;
       if(STATE.currentUser.id===editUser.id) STATE.currentUser = editUser;
       persist('users'); addAudit('تعديل مستخدم', `${name} (${ROLE_LABEL_OF(role)})`);
-      toast('تم حفظ التعديلات');
+      toast(t('user_updated'));
     } else {
       STATE.users.push({id:uid('u'), name, username, password, role});
       persist('users'); addAudit('إضافة مستخدم', `${name} (${ROLE_LABEL_OF(role)})`);
-      toast('تمت إضافة المستخدم');
+      toast(t('user_added'));
     }
     closeModal();
   };
@@ -2142,6 +2180,7 @@ function bindModal(){
    INIT
 ========================================================= */
 (async function init(){
+  applyDocumentTheme();
   document.getElementById('app').innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#8B97A3;">جارِ الاتصال بقاعدة البيانات...</div>`;
   await attachRealtimeListeners();
   bindPullToRefresh();
