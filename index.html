@@ -578,6 +578,7 @@ const I18N = {
     admin_eligibility_section:'تعديل استحقاق اليونيفورم (صلاحية المدير)', last_issue_date_field:'تاريخ آخر صرف', next_due_date_field:'تاريخ الاستحقاق القادم',
     admin_eligibility_helper:'تعديل هذين التاريخين يغيّر مباشرة موعد استحقاق الموظف لصرف يونيفورم جديد. اترك الحقلين فارغين لجعل الموظف مستحقاً فوراً.',
     modal_new_order:'طلب يونيفورم جديد', select_employee:'اختر الموظف', select_placeholder:'— اختر —',
+    quantity_label:'العدد', unit_price_hint:(p,c)=>`سعر الوحدة: ${p} ${c}`,
     order_image_label:'صورة مرفقة (اختياري)', order_image_hint:'يمكنك التقاط صورة بالكاميرا أو اختيار صورة من المعرض',
     remove_image:'إزالة الصورة', view_image:'عرض الصورة', image_too_large:'تعذّر معالجة هذه الصورة، الرجاء تجربة صورة أخرى',
     attached_image_section:'الصورة المرفقة', no_image_attached:'لا توجد صورة مرفقة لهذا الطلب',
@@ -659,6 +660,7 @@ const I18N = {
     admin_eligibility_section:'Edit Uniform Eligibility (Admin Only)', last_issue_date_field:'Last Issue Date', next_due_date_field:'Next Eligibility Date',
     admin_eligibility_helper:'Editing these dates directly changes when this employee is next eligible for a new uniform. Leave both fields empty to make the employee eligible immediately.',
     modal_new_order:'New Uniform Order', select_employee:'Select Employee', select_placeholder:'— Select —',
+    quantity_label:'Quantity', unit_price_hint:(p,c)=>`Unit price: ${p} ${c}`,
     order_image_label:'Attached Photo (optional)', order_image_hint:'You can take a photo with the camera or choose one from your gallery',
     remove_image:'Remove Photo', view_image:'View Photo', image_too_large:'Could not process this image, please try another one',
     attached_image_section:'Attached Photo', no_image_attached:'No photo attached to this order',
@@ -1468,13 +1470,13 @@ function employeeDetailView(){
     <div class="panel">
       <div class="panel-head"><h3>${t('received_history')}</h3></div>
       <div class="panel-body table-wrap">
-        <table><thead><tr><th>${t('col_order_no')}</th><th>${t('col_order_date')}</th><th>${t('col_type')}</th><th>${t('col_size')}</th><th>${t('col_price')}</th><th>${t('col_completed_date')}</th><th>${t('col_delivered_date')}</th><th>${t('col_status')}</th></tr></thead>
+        <table><thead><tr><th>${t('col_order_no')}</th><th>${t('col_order_date')}</th><th>${t('col_type')}</th><th>${t('quantity_label')}</th><th>${t('col_size')}</th><th>${t('col_price')}</th><th>${t('col_completed_date')}</th><th>${t('col_delivered_date')}</th><th>${t('col_status')}</th></tr></thead>
         <tbody>
         ${history.length? history.map(o=>`<tr>
-          <td>#${o.code}</td><td>${fmtDate(o.createdDate)}</td><td>${o.uniformType}</td><td>${o.size}</td><td>${o.price} ${t('currency')}</td>
+          <td>#${o.code}</td><td>${fmtDate(o.createdDate)}</td><td>${o.uniformType}</td><td>${o.quantity||1}</td><td>${o.size}</td><td>${o.price} ${t('currency')}</td>
           <td>${fmtDate(o.completedDate)}</td><td>${fmtDate(o.deliveredDate)}</td>
           <td><span class="badge ${STATUS_BADGE[o.status]}">${statusLabel(o.status)}</span></td>
-        </tr>`).join('') : `<tr><td colspan="8" class="empty-row">${t('no_history_yet')}</td></tr>`}
+        </tr>`).join('') : `<tr><td colspan="9" class="empty-row">${t('no_history_yet')}</td></tr>`}
         </tbody></table>
       </div>
     </div>
@@ -1520,17 +1522,17 @@ function ordersView(){
       </div>
       <div class="panel-body table-wrap">
         <table>
-          <thead><tr><th>${t('col_order_no')}</th><th>${t('col_employee')}</th><th>${t('col_employee_number')}</th><th>${t('col_branch')}</th><th>${t('col_size')}</th><th>${t('col_order_date')}</th><th>${t('col_status')}</th><th>${t('col_price')}</th><th></th></tr></thead>
+          <thead><tr><th>${t('col_order_no')}</th><th>${t('col_employee')}</th><th>${t('col_employee_number')}</th><th>${t('col_branch')}</th><th>${t('col_size')}</th><th>${t('quantity_label')}</th><th>${t('col_order_date')}</th><th>${t('col_status')}</th><th>${t('col_price')}</th><th></th></tr></thead>
           <tbody>
           ${list.length? list.map(o=>`<tr class="order-row" data-order-row="${o.id}" style="cursor:pointer;">
-            <td><span style="color:var(--navy-800);font-weight:700;">#${o.code}${o.image?' 📷':''}</span></td><td>${o.employeeName}</td><td>${o.employeeNumber}</td><td>${o.branch}</td><td>${o.size}</td>
+            <td><span style="color:var(--navy-800);font-weight:700;">#${o.code}${o.image?' 📷':''}</span></td><td>${o.employeeName}</td><td>${o.employeeNumber}</td><td>${o.branch}</td><td>${o.size}</td><td>${o.quantity||1}</td>
             <td>${fmtDate(o.createdDate)}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${statusLabel(o.status)}</span></td><td>${o.price} ${t('currency')}</td>
             <td style="white-space:nowrap;">
               <button class="icon-btn" data-order-detail="${o.id}" title="${t('details')}">↗</button>
               ${canManage ? `<button class="icon-btn" data-order-edit="${o.id}" title="${t('edit')}">✎</button>` : ''}
               ${canManage ? `<button class="icon-btn" data-order-delete="${o.id}" title="${t('delete')}">🗑</button>` : ''}
             </td>
-          </tr>`).join('') : `<tr><td colspan="9" class="empty-row">${t('no_orders')}</td></tr>`}
+          </tr>`).join('') : `<tr><td colspan="10" class="empty-row">${t('no_orders')}</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -1913,7 +1915,12 @@ function orderModal(m){
         <div id="o-emp-info"></div>
         <div class="grid-2">
           <div class="field"><label>${t('uniform_type')}</label><select id="o-type"><option>ثوب</option></select></div>
-          <div class="field"><label>${t('price')}</label><input id="o-price" value="${STATE.settings.price} ${t('currency')}" disabled></div>
+          <div class="field"><label>${t('quantity_label')}</label><input id="o-qty" type="number" min="1" step="1" value="1"></div>
+        </div>
+        <div class="field">
+          <label>${t('price')}</label>
+          <input id="o-price" value="${STATE.settings.price} ${t('currency')}" disabled style="font-weight:800;">
+          <div class="helper">${t('unit_price_hint', STATE.settings.price, t('currency'))}</div>
         </div>
         <div id="o-eligibility"></div>
         <div class="field" style="margin-top:6px;">
@@ -1944,6 +1951,17 @@ function bindOrderModal(){
   const overrideCk = document.getElementById('o-override');
   const reasonWrap = document.getElementById('o-reason-wrap');
   let pendingImage = null;
+
+  const qtyInput = document.getElementById('o-qty');
+  const priceInput = document.getElementById('o-price');
+  function recalcPrice(){
+    let qty = parseInt(qtyInput.value, 10);
+    if(!qty || qty < 1){ qty = 1; qtyInput.value = 1; }
+    const total = qty * Number(STATE.settings.price || 0);
+    priceInput.value = `${total.toLocaleString(STATE.lang==='en'?'en':'ar')} ${t('currency')}`;
+  }
+  qtyInput.oninput = recalcPrice;
+  recalcPrice();
 
   const imageInput = document.getElementById('o-image');
   const imagePreview = document.getElementById('o-image-preview');
@@ -2008,11 +2026,12 @@ function bindOrderModal(){
     if(STATE.orders.some(o=>o.employeeId===emp.id && ![STATUS.DELIVERED, STATUS.REJECTED].includes(o.status))){
       toast(t('existing_order_error'),'err'); return;
     }
+    const qty = Math.max(1, parseInt(document.getElementById('o-qty').value, 10) || 1);
     const order = {
       id:uid('o'), code: String(1000+STATE.orders.length+1),
       employeeId: emp.id, employeeName: emp.name, employeeNumber: emp.employeeNumber, branch: emp.branch, size: emp.size,
-      uniformType:'ثوب', price: STATE.settings.price, status: STATUS.NEW,
-      createdDate: todayISO(), receivedDate:null, progressDate:null, completedDate:null, deliveredDate:null,
+      uniformType:'ثوب', quantity: qty, price: qty * Number(STATE.settings.price||0), status: STATUS.NEW,
+      createdDate: todayISO(), receivedDate:null, measuredDate:null, progressDate:null, completedDate:null, deliveredDate:null,
       requestedBy: STATE.currentUser.name, exceptionReason, image: pendingImage || null
     };
     STATE.orders.push(order);
@@ -2040,6 +2059,7 @@ function orderEditModal(o){
         </div>
         <div class="grid-2">
           <div class="field"><label>${t('uniform_type')}</label><input id="oe-type" value="${o.uniformType||''}"></div>
+          <div class="field"><label>${t('quantity_label')}</label><input id="oe-qty" type="number" min="1" step="1" value="${o.quantity||1}"></div>
           <div class="field"><label>${t('size')}</label>
             <select id="oe-size">${['S','M','L','XL','XXL','XXXL'].map(s=>`<option ${o.size===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
@@ -2048,7 +2068,7 @@ function orderEditModal(o){
             <select id="oe-status">${Object.values(STATUS).map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}</select>
           </div>
         </div>
-        <div class="helper">${t('order_edit_helper')}</div>
+        <div class="helper">${t('unit_price_hint', STATE.settings.price, t('currency'))} — ${t('order_edit_helper')}</div>
       </div>
       <div class="modal-foot">
         <button class="btn btn-primary" id="save-order-edit">${t('save_changes')}</button>
@@ -2058,8 +2078,15 @@ function orderEditModal(o){
   </div>`;
 }
 function bindOrderEditModal(o){
+  const qtyEl = document.getElementById('oe-qty');
+  const priceEl = document.getElementById('oe-price');
+  qtyEl.oninput = ()=>{
+    const q = Math.max(1, parseInt(qtyEl.value, 10) || 1);
+    priceEl.value = q * Number(STATE.settings.price || 0);
+  };
   document.getElementById('save-order-edit').onclick = ()=>{
     const type = val('oe-type');
+    const quantity = Math.max(1, parseInt(qtyEl.value, 10) || 1);
     const size = document.getElementById('oe-size').value;
     const price = Number(document.getElementById('oe-price').value);
     const status = document.getElementById('oe-status').value;
@@ -2067,7 +2094,7 @@ function bindOrderEditModal(o){
     if(!price || price<=0){ toast(t('require_positive_price'),'err'); return; }
     const oldStatus = o.status;
     const oldPrice = Number(o.price||0);
-    Object.assign(o, {uniformType:type, size, price, status});
+    Object.assign(o, {uniformType:type, quantity, size, price, status});
     const priceDiff = price - oldPrice;
     if(priceDiff!==0){
       STATE.settings.tailorBalance = Math.max(0, Number(STATE.settings.tailorBalance||0) + priceDiff);
@@ -2082,6 +2109,7 @@ function bindOrderEditModal(o){
       }
       if(status===STATUS.DONE && !o.completedDate) o.completedDate = today;
       if(status===STATUS.RECEIVED && !o.receivedDate) o.receivedDate = today;
+      if(status===STATUS.MEASURED && !o.measuredDate) o.measuredDate = today;
       if(status===STATUS.PROGRESS && !o.progressDate) o.progressDate = today;
     }
     persist('orders');
@@ -2130,6 +2158,7 @@ function orderDetailModal(o){
           <div class="info-line"><span>${t('col_branch')}</span><span>${o.branch}</span></div>
           <div class="info-line"><span>${t('size')}</span><span>${o.size}</span></div>
           <div class="info-line"><span>${t('uniform_type')}</span><span>${o.uniformType}</span></div>
+          <div class="info-line"><span>${t('quantity_label')}</span><span>${o.quantity||1}</span></div>
           <div class="info-line"><span>${t('price')}</span><span>${o.price} ${t('currency')}</span></div>
         </div>
         ${o.exceptionReason? `<div class="alert alert-amber">${t('exception_alert', o.exceptionReason)}</div>`:''}
