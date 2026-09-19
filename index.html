@@ -1246,7 +1246,7 @@ function dashboardView(){
       <div class="panel-body table-wrap">
         <table><thead><tr><th>${t('col_order_no')}</th><th>${t('col_employee')}</th><th>${t('col_branch')}</th><th>${t('col_status')}</th><th>${t('col_order_date')}</th></tr></thead>
         <tbody>
-          ${recent.length? recent.map(o=>`<tr><td>#${o.code}</td><td>${o.employeeName}</td><td>${o.branch}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${statusLabel(o.status)}</span></td><td>${fmtDate(o.createdDate)}</td></tr>`).join('') : `<tr><td colspan="5" class="empty-row">${t('no_orders_yet')}</td></tr>`}
+          ${recent.length? recent.map(o=>`<tr class="order-row" data-order-row="${o.id}" style="cursor:pointer;"><td>#${o.code}${o.image?' 📷':''}</td><td>${o.employeeName}</td><td>${o.branch}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${statusLabel(o.status)}</span></td><td>${fmtDate(o.createdDate)}</td></tr>`).join('') : `<tr><td colspan="5" class="empty-row">${t('no_orders_yet')}</td></tr>`}
         </tbody></table>
       </div>
     </div>
@@ -1338,6 +1338,7 @@ function bindDashboard(){
   document.querySelectorAll('[data-stat-action]').forEach(el=>{
     el.onclick = ()=> handleStatCardClick(el.dataset.statAction);
   });
+  document.querySelectorAll('[data-order-row]').forEach(row=> row.onclick = ()=> openOrderDetailModal(row.dataset.orderRow));
 }
 
 /* =========================================================
@@ -1520,8 +1521,8 @@ function ordersView(){
         <table>
           <thead><tr><th>${t('col_order_no')}</th><th>${t('col_employee')}</th><th>${t('col_employee_number')}</th><th>${t('col_branch')}</th><th>${t('col_size')}</th><th>${t('col_order_date')}</th><th>${t('col_status')}</th><th>${t('col_price')}</th><th></th></tr></thead>
           <tbody>
-          ${list.length? list.map(o=>`<tr>
-            <td>#${o.code}${o.image?' 📷':''}</td><td>${o.employeeName}</td><td>${o.employeeNumber}</td><td>${o.branch}</td><td>${o.size}</td>
+          ${list.length? list.map(o=>`<tr class="order-row" data-order-row="${o.id}" style="cursor:pointer;">
+            <td><span style="color:var(--navy-800);font-weight:700;">#${o.code}${o.image?' 📷':''}</span></td><td>${o.employeeName}</td><td>${o.employeeNumber}</td><td>${o.branch}</td><td>${o.size}</td>
             <td>${fmtDate(o.createdDate)}</td><td><span class="badge ${STATUS_BADGE[o.status]}">${statusLabel(o.status)}</span></td><td>${o.price} ${t('currency')}</td>
             <td style="white-space:nowrap;">
               <button class="icon-btn" data-order-detail="${o.id}" title="${t('details')}">↗</button>
@@ -1541,9 +1542,13 @@ function bindOrders(){
   if(sEl){ sEl.oninput = upd; stEl.onchange = upd; }
   const addBtn = document.getElementById('add-order-btn');
   if(addBtn) addBtn.onclick = ()=> openOrderModal(null);
-  document.querySelectorAll('[data-order-detail]').forEach(el=> el.onclick = ()=> openOrderDetailModal(el.dataset.orderDetail));
-  document.querySelectorAll('[data-order-edit]').forEach(el=> el.onclick = ()=> openOrderEditModal(el.dataset.orderEdit));
-  document.querySelectorAll('[data-order-delete]').forEach(el=> el.onclick = ()=> deleteOrder(el.dataset.orderDelete));
+  document.querySelectorAll('[data-order-detail]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openOrderDetailModal(el.dataset.orderDetail); });
+  document.querySelectorAll('[data-order-edit]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openOrderEditModal(el.dataset.orderEdit); });
+  document.querySelectorAll('[data-order-delete]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); deleteOrder(el.dataset.orderDelete); });
+  document.querySelectorAll('[data-order-row]').forEach(row=> row.onclick = (e)=>{
+    if(e.target.closest('button')) return;
+    openOrderDetailModal(row.dataset.orderRow);
+  });
 }
 
 function openOrderEditModal(orderId){
