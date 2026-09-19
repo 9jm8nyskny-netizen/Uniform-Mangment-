@@ -324,6 +324,7 @@
   .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;}
   .badge-new{background:var(--blue-100);color:var(--blue-700);}
   .badge-received{background:#EDE7F6;color:#5B3E9A;}
+  .badge-measured{background:#E0F0F5;color:#1A6B85;}
   .badge-progress{background:var(--amber-100);color:var(--amber-700);}
   .badge-done{background:var(--gold-100);color:var(--gold-600);}
   .badge-delivered{background:var(--green-100);color:var(--green-700);}
@@ -480,11 +481,11 @@ const CAFE_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARoAAAIICAYAAAC
 const CAFE_LOGO_SVG = `<img class="logo-img" src="${CAFE_LOGO}" alt="شعار لحظة كيف — Momo Cafe">`;
 
 const STATUS = {
-  NEW:'جديد', RECEIVED:'تم استلامه من الخياط', PROGRESS:'قيد التنفيذ',
+  NEW:'جديد', RECEIVED:'تم استلامه من الخياط', MEASURED:'تم أخذ المقاس', PROGRESS:'قيد التنفيذ',
   DONE:'تم الإنجاز', DELIVERED:'تم التسليم للموظف', REJECTED:'مرفوض / يحتاج تعديل'
 };
 const STATUS_BADGE = {
-  [STATUS.NEW]:'badge-new', [STATUS.RECEIVED]:'badge-received', [STATUS.PROGRESS]:'badge-progress',
+  [STATUS.NEW]:'badge-new', [STATUS.RECEIVED]:'badge-received', [STATUS.MEASURED]:'badge-measured', [STATUS.PROGRESS]:'badge-progress',
   [STATUS.DONE]:'badge-done', [STATUS.DELIVERED]:'badge-delivered', [STATUS.REJECTED]:'badge-rejected'
 };
 const ROLE_LABEL_AR = {admin:'مدير النظام', hr:'الموارد البشرية', tailor:'الخياط', branch_manager:'مدير فروع'};
@@ -561,7 +562,7 @@ const I18N = {
     back_to_employees:'→ العودة لقائمة الموظفين', delete_employee_btn:'🗑 حذف الموظف', eligible_now_badge:'مستحق حالياً',
     job_title:'المسمى الوظيفي', size:'المقاس', received_history:'سجل اليونيفورمات المستلمة', col_type:'النوع', col_price:'السعر',
     col_completed_date:'تاريخ الإنجاز', col_delivered_date:'تاريخ التسليم', no_history_yet:'لا يوجد سجل بعد', currency:'ريال',
-    search_order_or_name:'بحث برقم الطلب / اسم الموظف', all_statuses:'كل الحالات', inprogress_combined:'قيد التنفيذ (استلام + تنفيذ)',
+    search_order_or_name:'بحث برقم الطلب / اسم الموظف', all_statuses:'كل الحالات', inprogress_combined:'قيد التنفيذ (استلام + المقاس + تنفيذ)',
     new_order_btn:'+ طلب يونيفورم جديد', col_employee_number:'الرقم الوظيفي', details:'التفاصيل', no_orders:'لا توجد طلبات',
     notifications_title:'الإشعارات', mark_all_read:'تعليم الكل كمقروء', no_notifications_yet:'لا توجد إشعارات حتى الآن',
     add_user:'+ إضافة مستخدم', col_full_name:'الاسم', col_username:'اسم المستخدم', col_role:'الدور',
@@ -585,7 +586,7 @@ const I18N = {
     modal_edit_order:(code)=>`تعديل الطلب #${code}`, status_field:'الحالة', order_edit_helper:'تغيير الحالة هنا يُستخدم فقط لتصحيح خطأ إداري. لتحديث سير العمل الطبيعي (استلام، تنفيذ، تسليم) استخدم أزرار "التفاصيل".',
     modal_order_details:(code)=>`تفاصيل الطلب #${code}`, order_path:'مسار الطلب', not_happened_yet:'لم يحدث بعد', close:'إغلاق',
     exception_alert:(r)=>`تم إنشاء هذا الطلب باستثناء إداري — السبب: ${r}`, rejected_alert:'هذا الطلب مرفوض / يحتاج تعديل.',
-    mark_received:'تم استلام الطلب', start_progress:'بدء التنفيذ', mark_done:'تم الإنجاز', reject_edit:'طلب تعديل / رفض',
+    mark_received:'تم استلام الطلب', mark_measured:'تم أخذ المقاس', start_progress:'بدء التنفيذ', mark_done:'تم الإنجاز', reject_edit:'طلب تعديل / رفض',
     register_delivery:'تسجيل تسليم اليونيفورم للموظف',
     modal_add_user:'إضافة مستخدم جديد', modal_edit_user:'تعديل بيانات المستخدم', full_name_field:'الاسم الكامل',
     password_field_new:'كلمة المرور', password_field_edit:'كلمة المرور (اتركها فارغة للإبقاء على كلمة المرور الحالية)', role_field:'الدور',
@@ -642,7 +643,7 @@ const I18N = {
     back_to_employees:'→ Back to Employees', delete_employee_btn:'🗑 Delete Employee', eligible_now_badge:'Eligible Now',
     job_title:'Job Title', size:'Size', received_history:'Uniforms Received History', col_type:'Type', col_price:'Price',
     col_completed_date:'Completed Date', col_delivered_date:'Delivered Date', no_history_yet:'No history yet', currency:'SAR',
-    search_order_or_name:'Search by order # / employee name', all_statuses:'All Statuses', inprogress_combined:'In Progress (Received + Working)',
+    search_order_or_name:'Search by order # / employee name', all_statuses:'All Statuses', inprogress_combined:'In Progress (Received + Measured + Working)',
     new_order_btn:'+ New Uniform Order', col_employee_number:'Employee No.', details:'Details', no_orders:'No orders',
     notifications_title:'Notifications', mark_all_read:'Mark all as read', no_notifications_yet:'No notifications yet',
     add_user:'+ Add User', col_full_name:'Name', col_username:'Username', col_role:'Role',
@@ -666,7 +667,7 @@ const I18N = {
     modal_edit_order:(code)=>`Edit Order #${code}`, status_field:'Status', order_edit_helper:'Changing the status here is only for correcting an administrative error. To update the normal workflow (received, in progress, delivered) use the "Details" buttons.',
     modal_order_details:(code)=>`Order #${code} Details`, order_path:'Order Timeline', not_happened_yet:'Not happened yet', close:'Close',
     exception_alert:(r)=>`This order was created as an administrative exception — Reason: ${r}`, rejected_alert:'This order was rejected / needs revision.',
-    mark_received:'Mark as Received', start_progress:'Start Progress', mark_done:'Mark as Done', reject_edit:'Request Revision / Reject',
+    mark_received:'Mark as Received', mark_measured:'Measurement Taken', start_progress:'Start Progress', mark_done:'Mark as Done', reject_edit:'Request Revision / Reject',
     register_delivery:'Register Delivery to Employee',
     modal_add_user:'Add New User', modal_edit_user:'Edit User', full_name_field:'Full Name',
     password_field_new:'Password', password_field_edit:'Password (leave empty to keep current password)', role_field:'Role',
@@ -701,7 +702,7 @@ function statusKey(statusValue){
   return Object.keys(STATUS).find(k=> STATUS[k]===statusValue) || null;
 }
 const STATUS_LABEL_EN = {
-  NEW:'New', RECEIVED:'Received by Tailor', PROGRESS:'In Progress',
+  NEW:'New', RECEIVED:'Received by Tailor', MEASURED:'Measurement Taken', PROGRESS:'In Progress',
   DONE:'Completed', DELIVERED:'Delivered to Employee', REJECTED:'Rejected / Needs Revision'
 };
 function statusLabel(statusValue){
@@ -1223,7 +1224,7 @@ function dashboardView(){
   const cards = [
     {l:t('stat_total_employees'), v: total, c:'', action:'employees-all'},
     {l:t('stat_new_orders'), v: countByStatus(STATUS.NEW), c:'', action:'orders-new'},
-    {l:t('stat_in_progress'), v: countByStatus(STATUS.RECEIVED)+countByStatus(STATUS.PROGRESS), c:'amber', action:'orders-inprogress'},
+    {l:t('stat_in_progress'), v: countByStatus(STATUS.RECEIVED)+countByStatus(STATUS.MEASURED)+countByStatus(STATUS.PROGRESS), c:'amber', action:'orders-inprogress'},
     {l:t('stat_done_orders'), v: countByStatus(STATUS.DONE), c:'gold', action:'orders-done'},
     {l:t('stat_delivered'), v: delivered, c:'green', action:'orders-delivered'},
     {l:t('stat_eligible'), v: eligible, c:'green', action:'employees-eligible'},
@@ -1500,7 +1501,7 @@ function ordersView(){
   let list = STATE.orders.filter(o=>{
     const s = q.search.trim();
     const matchSearch = !s || o.employeeName.includes(s) || o.employeeNumber.includes(s) || o.code.includes(s);
-    const matchStatus = !q.status || (q.status===INPROGRESS_FILTER ? [STATUS.RECEIVED, STATUS.PROGRESS].includes(o.status) : o.status===q.status);
+    const matchStatus = !q.status || (q.status===INPROGRESS_FILTER ? [STATUS.RECEIVED, STATUS.MEASURED, STATUS.PROGRESS].includes(o.status) : o.status===q.status);
     return matchSearch && matchStatus;
   }).sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate));
 
@@ -2097,19 +2098,21 @@ function orderDetailModal(o){
   const steps = [
     {key:STATUS.NEW, label:statusLabel(STATUS.NEW), date:o.createdDate},
     {key:STATUS.RECEIVED, label:statusLabel(STATUS.RECEIVED), date:o.receivedDate},
+    {key:STATUS.MEASURED, label:statusLabel(STATUS.MEASURED), date:o.measuredDate},
     {key:STATUS.PROGRESS, label:statusLabel(STATUS.PROGRESS), date:o.progressDate},
     {key:STATUS.DONE, label:statusLabel(STATUS.DONE), date:o.completedDate},
     {key:STATUS.DELIVERED, label:statusLabel(STATUS.DELIVERED), date:o.deliveredDate},
   ];
-  const order = ['created', STATUS.NEW, STATUS.RECEIVED, STATUS.PROGRESS, STATUS.DONE, STATUS.DELIVERED];
+  const order = ['created', STATUS.NEW, STATUS.RECEIVED, STATUS.MEASURED, STATUS.PROGRESS, STATUS.DONE, STATUS.DELIVERED];
   const curIdx = order.indexOf(o.status);
 
   let tailorActions = '';
   if(role==='tailor' || role==='admin'){
     if(o.status===STATUS.NEW) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.RECEIVED}">${t('mark_received')}</button>`;
-    else if(o.status===STATUS.RECEIVED) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.PROGRESS}">${t('start_progress')}</button>`;
+    else if(o.status===STATUS.RECEIVED) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.MEASURED}">${t('mark_measured')}</button>`;
+    else if(o.status===STATUS.MEASURED) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.PROGRESS}">${t('start_progress')}</button>`;
     else if(o.status===STATUS.PROGRESS) tailorActions = `<button class="btn btn-gold btn-sm" data-set-status="${STATUS.DONE}">${t('mark_done')}</button>`;
-    if([STATUS.NEW,STATUS.RECEIVED,STATUS.PROGRESS].includes(o.status)) tailorActions += ` <button class="btn btn-danger btn-sm" data-set-status="${STATUS.REJECTED}">${t('reject_edit')}</button>`;
+    if([STATUS.NEW,STATUS.RECEIVED,STATUS.MEASURED,STATUS.PROGRESS].includes(o.status)) tailorActions += ` <button class="btn btn-danger btn-sm" data-set-status="${STATUS.REJECTED}">${t('reject_edit')}</button>`;
   }
   let hrActions = '';
   if(hasHRAccess(role) && o.status===STATUS.DONE){
@@ -2163,6 +2166,7 @@ function bindOrderDetailModal(o){
       o.status = newStatus;
       const today = todayISO();
       if(newStatus===STATUS.RECEIVED) o.receivedDate = today;
+      if(newStatus===STATUS.MEASURED) o.measuredDate = today;
       if(newStatus===STATUS.PROGRESS) o.progressDate = today;
       if(newStatus===STATUS.DONE){
         o.completedDate = today;
