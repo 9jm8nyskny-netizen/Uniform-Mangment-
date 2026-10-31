@@ -178,6 +178,7 @@
     padding:8px 2px;cursor:pointer;flex:none;border-radius:6px;
   }
   .io-field .pass-toggle:hover{color:var(--navy-800);}
+  .dev-credit{text-align:center;font-size:11.5px;color:var(--muted,#8a8a8a);opacity:.85;margin:14px 0 4px;letter-spacing:.2px;}
   .login-secure-note{
     display:flex;align-items:center;gap:6px;justify-content:center;margin-top:22px;
     font-size:11.5px;color:var(--text-400);
@@ -333,6 +334,19 @@
   .badge-not-eligible{background:var(--red-100);color:var(--red-700);}
 
   .icon-btn{background:var(--navy-100);border:none;border-radius:7px;width:30px;height:30px;font-size:13px;}
+  .qty-stepper{display:flex;align-items:center;gap:0;width:100%;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:#FBFBFC;}
+  .qty-stepper button{
+    background:var(--navy-100);border:none;width:44px;height:42px;flex:none;font-size:19px;font-weight:700;
+    color:var(--navy-800);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;
+  }
+  .qty-stepper button:active{background:var(--navy-700);color:#fff;}
+  .qty-stepper button:disabled{opacity:.4;cursor:not-allowed;}
+  .qty-stepper .qty-value{
+    flex:1;text-align:center;font-size:16px;font-weight:800;color:var(--text-900);
+    background:transparent;border:none;padding:0;-moz-appearance:textfield;
+  }
+  .qty-stepper .qty-value::-webkit-outer-spin-button,
+  .qty-stepper .qty-value::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   .icon-btn:hover{background:var(--navy-700);color:#fff;}
   @media (max-width:640px){
     table{font-size:12.5px;}
@@ -578,7 +592,7 @@ const I18N = {
     admin_eligibility_section:'تعديل استحقاق اليونيفورم (صلاحية المدير)', last_issue_date_field:'تاريخ آخر صرف', next_due_date_field:'تاريخ الاستحقاق القادم',
     admin_eligibility_helper:'تعديل هذين التاريخين يغيّر مباشرة موعد استحقاق الموظف لصرف يونيفورم جديد. اترك الحقلين فارغين لجعل الموظف مستحقاً فوراً.',
     modal_new_order:'طلب يونيفورم جديد', select_employee:'اختر الموظف', select_placeholder:'— اختر —',
-    quantity_label:'العدد', unit_price_hint:(p,c)=>`سعر الوحدة: ${p} ${c}`,
+    developed_by:'تم التطوير بواسطة رمضان عزان', quantity_label:'العدد', unit_price_hint:(p,c)=>`سعر الوحدة: ${p} ${c}`,
     order_image_label:'صورة مرفقة (اختياري)', order_image_hint:'يمكنك التقاط صورة بالكاميرا أو اختيار صورة من المعرض',
     remove_image:'إزالة الصورة', view_image:'عرض الصورة', image_too_large:'تعذّر معالجة هذه الصورة، الرجاء تجربة صورة أخرى',
     attached_image_section:'الصورة المرفقة', no_image_attached:'لا توجد صورة مرفقة لهذا الطلب',
@@ -660,7 +674,7 @@ const I18N = {
     admin_eligibility_section:'Edit Uniform Eligibility (Admin Only)', last_issue_date_field:'Last Issue Date', next_due_date_field:'Next Eligibility Date',
     admin_eligibility_helper:'Editing these dates directly changes when this employee is next eligible for a new uniform. Leave both fields empty to make the employee eligible immediately.',
     modal_new_order:'New Uniform Order', select_employee:'Select Employee', select_placeholder:'— Select —',
-    quantity_label:'Quantity', unit_price_hint:(p,c)=>`Unit price: ${p} ${c}`,
+    developed_by:'Developed by Ramadan Azzan', quantity_label:'Quantity', unit_price_hint:(p,c)=>`Unit price: ${p} ${c}`,
     order_image_label:'Attached Photo (optional)', order_image_hint:'You can take a photo with the camera or choose one from your gallery',
     remove_image:'Remove Photo', view_image:'View Photo', image_too_large:'Could not process this image, please try another one',
     attached_image_section:'Attached Photo', no_image_attached:'No photo attached to this order',
@@ -899,6 +913,7 @@ function loginView(){
         </a>
         ${!FIREBASE_CONNECTED? `<div class="storage-warn-login">${t('firebase_disconnected_login')}</div>` : ''}
         <div class="login-secure-note"><span>🔒</span><span>${t('secure_note')}</span></div>
+        <div class="dev-credit">${t('developed_by')}</div>
       </div>
     </div>
   </div>`;
@@ -976,6 +991,7 @@ function renderEmployeePortal(){
         </div>
       </div>
     </div>
+    <div class="dev-credit">${t('developed_by')}</div>
   </div>`;
   document.getElementById('ep-back').onclick = ()=>{ STATE.employeePortal=false; render(); };
   document.getElementById('portal-theme-toggle').onclick = ()=>{ toggleTheme(); renderEmployeePortal(); };
@@ -1040,6 +1056,7 @@ function shellView(){
       <div class="sidebar-foot">
         <div class="who"><b>${u.name}</b>${ROLE_LABEL_OF(u.role)}</div>
         <div class="nav-item" data-action="logout"><span class="ic">↩</span>${t('logout')}</div>
+        <div class="dev-credit">${t('developed_by')}</div>
       </div>
     </div>
     <div class="main">
@@ -1915,7 +1932,13 @@ function orderModal(m){
         <div id="o-emp-info"></div>
         <div class="grid-2">
           <div class="field"><label>${t('uniform_type')}</label><select id="o-type"><option>ثوب</option></select></div>
-          <div class="field"><label>${t('quantity_label')}</label><input id="o-qty" type="number" min="1" step="1" value="1"></div>
+          <div class="field"><label>${t('quantity_label')}</label>
+            <div class="qty-stepper">
+              <button type="button" id="o-qty-minus">−</button>
+              <input id="o-qty" class="qty-value" type="number" readonly value="1">
+              <button type="button" id="o-qty-plus">+</button>
+            </div>
+          </div>
         </div>
         <div class="field">
           <label>${t('price')}</label>
@@ -1960,7 +1983,14 @@ function bindOrderModal(){
     const total = qty * Number(STATE.settings.price || 0);
     priceInput.value = `${total.toLocaleString(STATE.lang==='en'?'en':'ar')} ${t('currency')}`;
   }
-  qtyInput.oninput = recalcPrice;
+  document.getElementById('o-qty-minus').onclick = ()=>{
+    const q = Math.max(1, (parseInt(qtyInput.value,10)||1) - 1);
+    qtyInput.value = q; recalcPrice();
+  };
+  document.getElementById('o-qty-plus').onclick = ()=>{
+    const q = (parseInt(qtyInput.value,10)||1) + 1;
+    qtyInput.value = q; recalcPrice();
+  };
   recalcPrice();
 
   const imageInput = document.getElementById('o-image');
@@ -2059,7 +2089,13 @@ function orderEditModal(o){
         </div>
         <div class="grid-2">
           <div class="field"><label>${t('uniform_type')}</label><input id="oe-type" value="${o.uniformType||''}"></div>
-          <div class="field"><label>${t('quantity_label')}</label><input id="oe-qty" type="number" min="1" step="1" value="${o.quantity||1}"></div>
+          <div class="field"><label>${t('quantity_label')}</label>
+            <div class="qty-stepper">
+              <button type="button" id="oe-qty-minus">−</button>
+              <input id="oe-qty" class="qty-value" type="number" readonly value="${o.quantity||1}">
+              <button type="button" id="oe-qty-plus">+</button>
+            </div>
+          </div>
           <div class="field"><label>${t('size')}</label>
             <select id="oe-size">${['S','M','L','XL','XXL','XXXL'].map(s=>`<option ${o.size===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
@@ -2080,9 +2116,17 @@ function orderEditModal(o){
 function bindOrderEditModal(o){
   const qtyEl = document.getElementById('oe-qty');
   const priceEl = document.getElementById('oe-price');
-  qtyEl.oninput = ()=>{
+  function recalcEditPrice(){
     const q = Math.max(1, parseInt(qtyEl.value, 10) || 1);
     priceEl.value = q * Number(STATE.settings.price || 0);
+  }
+  document.getElementById('oe-qty-minus').onclick = ()=>{
+    qtyEl.value = Math.max(1, (parseInt(qtyEl.value,10)||1) - 1);
+    recalcEditPrice();
+  };
+  document.getElementById('oe-qty-plus').onclick = ()=>{
+    qtyEl.value = (parseInt(qtyEl.value,10)||1) + 1;
+    recalcEditPrice();
   };
   document.getElementById('save-order-edit').onclick = ()=>{
     const type = val('oe-type');
