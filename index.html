@@ -592,7 +592,8 @@ const I18N = {
     admin_eligibility_section:'تعديل استحقاق اليونيفورم (صلاحية المدير)', last_issue_date_field:'تاريخ آخر صرف', next_due_date_field:'تاريخ الاستحقاق القادم',
     admin_eligibility_helper:'تعديل هذين التاريخين يغيّر مباشرة موعد استحقاق الموظف لصرف يونيفورم جديد. اترك الحقلين فارغين لجعل الموظف مستحقاً فوراً.',
     modal_new_order:'طلب يونيفورم جديد', select_employee:'اختر الموظف', select_placeholder:'— اختر —',
-    developed_by:'تم التطوير بواسطة رمضان عزان', 
+    developed_by:'تم التطوير بواسطة رمضان عزان', remember_prompt:'هل تريد حفظ تسجيل الدخول على هذا الجهاز لتدخل تلقائيًا في المرات القادمة؟',
+    
     export_excel:'تصدير Excel', export_pdf:'تصدير PDF', date_from:'من تاريخ', date_to:'إلى تاريخ', clear_filters:'مسح الفلاتر',
     stat_due_soon:'قريب الاستحقاق', due_soon_filter:'قريب الاستحقاق (30 يوم)', due_soon_alert:(n,d)=>`${n} موظف يقترب موعد استحقاقهم لليونيفورم خلال ${d} يومًا`,
     stock_title:'مخزون المقاسات', stock_helper:'يُخصم العدد من مخزون المقاس تلقائيًا عند تسجيل التسليم، ويظهر تنبيه عندما يصل المقاس إلى 5 قطع أو أقل.', stock_save:'حفظ المخزون', stock_saved:'تم حفظ المخزون', stock_low_alert:(x)=>`مخزون منخفض في المقاسات: ${x}`, stock_pieces:'قطعة',
@@ -680,7 +681,8 @@ quantity_label:'العدد', unit_price_hint:(p,c)=>`سعر الوحدة: ${p} $
     admin_eligibility_section:'Edit Uniform Eligibility (Admin Only)', last_issue_date_field:'Last Issue Date', next_due_date_field:'Next Eligibility Date',
     admin_eligibility_helper:'Editing these dates directly changes when this employee is next eligible for a new uniform. Leave both fields empty to make the employee eligible immediately.',
     modal_new_order:'New Uniform Order', select_employee:'Select Employee', select_placeholder:'— Select —',
-    developed_by:'Developed by Ramadan Azzan', 
+    developed_by:'Developed by Ramadan Azzan', remember_prompt:'Do you want to save your login on this device so you are signed in automatically next time?',
+    
     export_excel:'Export Excel', export_pdf:'Export PDF', date_from:'From', date_to:'To', clear_filters:'Clear filters',
     stat_due_soon:'Due soon', due_soon_filter:'Due soon (30 days)', due_soon_alert:(n,d)=>`${n} employee(s) become eligible for a uniform within ${d} days`,
     stock_title:'Size Stock', stock_helper:'Stock is deducted automatically when a delivery is registered, and an alert shows when a size reaches 5 pieces or fewer.', stock_save:'Save Stock', stock_saved:'Stock saved', stock_low_alert:(x)=>`Low stock in sizes: ${x}`, stock_pieces:'pcs',
@@ -1033,6 +1035,8 @@ function bindLogin(){
     passToggle.setAttribute('aria-label', showing ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور');
   };
 }
+function getRememberedId(){ try{ return localStorage.getItem('uf-remember'); }catch(e){ return null; } }
+function setRememberedId(id){ try{ if(id) localStorage.setItem('uf-remember', id); else localStorage.removeItem('uf-remember'); }catch(e){} }
 function doLogin(){
   const u = document.getElementById('li-user').value.trim();
   const p = document.getElementById('li-pass').value;
@@ -1043,8 +1047,12 @@ function doLogin(){
   addAudit('تسجيل دخول', user.name);
   checkDueSoon();
   render();
+  if(getRememberedId()!==user.id){
+    setTimeout(()=>{ if(confirm(t('remember_prompt'))) setRememberedId(user.id); }, 350);
+  }
 }
 function logout(){
+  setRememberedId(null);
   addAudit('تسجيل خروج', STATE.currentUser.name);
   STATE.currentUser = null;
   render();
@@ -2505,6 +2513,11 @@ function bindModal(){
   document.getElementById('app').innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#8B97A3;">جارِ الاتصال بقاعدة البيانات...</div>`;
   await attachRealtimeListeners();
   bindPullToRefresh();
+  const rid = getRememberedId();
+  if(rid){
+    const ru = STATE.users.find(x=>x.id===rid);
+    if(ru){ STATE.currentUser = ru; STATE.view = 'dashboard'; checkDueSoon(); } else setRememberedId(null);
+  }
   render();
 })();
 </script>
