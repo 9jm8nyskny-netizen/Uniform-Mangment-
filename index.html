@@ -592,7 +592,11 @@ const I18N = {
     admin_eligibility_section:'تعديل استحقاق اليونيفورم (صلاحية المدير)', last_issue_date_field:'تاريخ آخر صرف', next_due_date_field:'تاريخ الاستحقاق القادم',
     admin_eligibility_helper:'تعديل هذين التاريخين يغيّر مباشرة موعد استحقاق الموظف لصرف يونيفورم جديد. اترك الحقلين فارغين لجعل الموظف مستحقاً فوراً.',
     modal_new_order:'طلب يونيفورم جديد', select_employee:'اختر الموظف', select_placeholder:'— اختر —',
-    developed_by:'تم التطوير بواسطة رمضان عزان', remember_prompt:'هل تريد حفظ تسجيل الدخول على هذا الجهاز لتدخل تلقائيًا في المرات القادمة؟',
+    developed_by:'تم التطوير بواسطة رمضان عزان', 
+    order_note_label:'ملاحظات على الطلب (اختياري)', order_note_ph:'مثال: يحتاج تقصير الأكمام...', whatsapp_notify:'💬 إبلاغ الموظف عبر واتساب', phone_label:'رقم الجوال (واتساب)', phone_missing:'لا يوجد رقم جوال لهذا الموظف، أضفه من تعديل بيانات الموظف',
+    whatsapp_msg:(n,c,b)=>`مرحبًا ${n}، يونيفورمك جاهز للاستلام (طلب #${c}). نرجو مراجعة ${b}.`,
+    notif_enable:'🔔 تفعيل إشعارات الجهاز', notif_enabled:'تم تفعيل إشعارات الجهاز', notif_denied:'الإشعارات محظورة، فعّلها من إعدادات المتصفح للموقع', notif_unsupported:'هذا المتصفح لا يدعم الإشعارات', notif_helper:'تصلك الإشعارات أثناء فتح التطبيق (حتى لو في الخلفية)، ولا تصل وهو مغلق تمامًا.', notif_title:'يونيفورم لحظة كيف',
+remember_prompt:'هل تريد حفظ تسجيل الدخول على هذا الجهاز لتدخل تلقائيًا في المرات القادمة؟',
     
     export_excel:'تصدير Excel', export_pdf:'تصدير PDF', date_from:'من تاريخ', date_to:'إلى تاريخ', clear_filters:'مسح الفلاتر',
     stat_due_soon:'قريب الاستحقاق', due_soon_filter:'قريب الاستحقاق (30 يوم)', due_soon_alert:(n,d)=>`${n} موظف يقترب موعد استحقاقهم لليونيفورم خلال ${d} يومًا`,
@@ -681,7 +685,11 @@ quantity_label:'العدد', unit_price_hint:(p,c)=>`سعر الوحدة: ${p} $
     admin_eligibility_section:'Edit Uniform Eligibility (Admin Only)', last_issue_date_field:'Last Issue Date', next_due_date_field:'Next Eligibility Date',
     admin_eligibility_helper:'Editing these dates directly changes when this employee is next eligible for a new uniform. Leave both fields empty to make the employee eligible immediately.',
     modal_new_order:'New Uniform Order', select_employee:'Select Employee', select_placeholder:'— Select —',
-    developed_by:'Developed by Ramadan Azzan', remember_prompt:'Do you want to save your login on this device so you are signed in automatically next time?',
+    developed_by:'Developed by Ramadan Azzan', 
+    order_note_label:'Order notes (optional)', order_note_ph:'e.g. sleeves need shortening...', whatsapp_notify:'💬 Notify employee on WhatsApp', phone_label:'Mobile number (WhatsApp)', phone_missing:'This employee has no mobile number; add it from Edit Employee',
+    whatsapp_msg:(n,c,b)=>`Hello ${n}, your uniform is ready for pickup (order #${c}). Please visit ${b}.`,
+    notif_enable:'🔔 Enable device notifications', notif_enabled:'Device notifications enabled', notif_denied:'Notifications are blocked; enable them in the browser site settings', notif_unsupported:'This browser does not support notifications', notif_helper:'Notifications arrive while the app is open (even in the background), not when it is fully closed.', notif_title:'Momo Cafe Uniform',
+remember_prompt:'Do you want to save your login on this device so you are signed in automatically next time?',
     
     export_excel:'Export Excel', export_pdf:'Export PDF', date_from:'From', date_to:'To', clear_filters:'Clear filters',
     stat_due_soon:'Due soon', due_soon_filter:'Due soon (30 days)', due_soon_alert:(n,d)=>`${n} employee(s) become eligible for a uniform within ${d} days`,
@@ -830,6 +838,7 @@ function attachRealtimeListeners(){
           val = Object.values(val);
         }
         STATE[stateKey] = val;
+        if(stateKey==='notifications') handleNewNotifications();
         if(pending.has(stateKey)){
           pending.delete(stateKey);
           if(pending.size===0 && !resolved){ resolved = true; resolve(); }
@@ -850,7 +859,7 @@ function addAudit(action, details){
   persist('auditLogs');
 }
 function addNotification(message){
-  STATE.notifications.unshift({id:uid('n'), message, at:new Date().toISOString(), read:false});
+  STATE.notifications.unshift({id:uid('n'), message, at:new Date().toISOString(), read:false, by: STATE.currentUser? STATE.currentUser.id : null});
   persist('notifications');
 }
 function toast(msg, type){
@@ -946,6 +955,51 @@ function exportBtns(kind){
 }
 function bindExports(){
   document.querySelectorAll('[data-export]').forEach(b=> b.onclick = ()=>{ const [k,f]=b.dataset.export.split(':'); exportData(k,f); });
+}
+
+function normalizePhone(raw){
+  let d = String(raw||'').replace(/\D/g,'');
+  if(d.startsWith('00')) d = d.slice(2);
+  if(d.startsWith('05') && d.length===10) d = '966'+d.slice(1);
+  else if(d.startsWith('5') && d.length===9) d = '966'+d;
+  return d;
+}
+function whatsappEmployee(o){
+  const emp = STATE.employees.find(e=>e.id===o.employeeId);
+  const ph = emp && normalizePhone(emp.phone);
+  if(!ph){ toast(t('phone_missing'),'err'); return; }
+  window.open(`https://wa.me/${ph}?text=${encodeURIComponent(t('whatsapp_msg', o.employeeName, o.code, o.branch))}`, '_blank');
+}
+function notifRelevant(n){
+  const role = STATE.currentUser && STATE.currentUser.role;
+  if(role==='admin') return true;
+  const forTailor = (n.message||'').includes('إلى الخياط');
+  return role==='tailor' ? forTailor : !forTailor;
+}
+function showDeviceNotification(msg){
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  const opts = {body: msg, tag: 'uf-'+Date.now()};
+  const fallback = ()=>{ try{ new Notification(t('notif_title'), opts); }catch(e){} };
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistration().then(r=> r ? r.showNotification(t('notif_title'), opts) : fallback()).catch(fallback);
+  } else fallback();
+}
+function handleNewNotifications(){
+  if(!STATE._seenNotif) STATE._seenNotif = new Set();
+  const first = !STATE._notifInit; STATE._notifInit = true;
+  (STATE.notifications||[]).forEach(n=>{
+    if(STATE._seenNotif.has(n.id)) return;
+    STATE._seenNotif.add(n.id);
+    if(first || !STATE.currentUser || n.by===STATE.currentUser.id || !notifRelevant(n)) return;
+    showDeviceNotification(n.message);
+  });
+}
+async function enableDeviceNotifications(){
+  if(!('Notification' in window)){ toast(t('notif_unsupported'),'err'); return; }
+  const r = await Notification.requestPermission();
+  if(r==='granted'){ toast(t('notif_enabled')); showDeviceNotification(t('notif_enabled')); }
+  else toast(t('notif_denied'),'err');
+  render();
 }
 
 function employeeEligibility(emp){
@@ -1737,7 +1791,8 @@ function notificationsView(){
   const list = STATE.notifications;
   return `
   <div class="panel">
-    <div class="panel-head"><h3>${t('notifications_title')}</h3>${list.length? `<button class="btn btn-ghost btn-sm" id="mark-all">${t('mark_all_read')}</button>`:''}</div>
+    <div class="panel-head"><h3>${t('notifications_title')}</h3><div style="display:flex;gap:8px;flex-wrap:wrap;">${('Notification' in window && Notification.permission!=='granted')? `<button class="btn btn-gold btn-sm" id="enable-notif">${t('notif_enable')}</button>`:''}${list.length? `<button class="btn btn-ghost btn-sm" id="mark-all">${t('mark_all_read')}</button>`:''}</div></div>
+    <div class="helper" style="padding:10px 18px 0;">${t('notif_helper')}</div>
     <div class="panel-body" style="padding:0;">
       ${list.length? list.map(n=>`
         <div class="notif-item" style="background:${n.read?'transparent':'var(--blue-100)'}">
@@ -1748,6 +1803,7 @@ function notificationsView(){
   </div>`;
 }
 function bindNotifications(){
+  const en = document.getElementById('enable-notif'); if(en) en.onclick = enableDeviceNotifications;
   const btn = document.getElementById('mark-all');
   if(btn) btn.onclick = ()=>{ STATE.notifications.forEach(n=>n.read=true); persist('notifications'); render(); };
 }
@@ -2002,6 +2058,7 @@ function employeeModal(emp){
             </select>
             <input id="f-title-new" placeholder="${t('new_job_title_input_placeholder')}" style="display:none;margin-top:8px;">
           </div>
+          <div class="field"><label>${t('phone_label')}</label><input id="f-phone" type="tel" inputmode="tel" placeholder="05xxxxxxxx" value="${emp?.phone||''}"></div>
           <div class="field"><label>${t('size')}</label>
             <select id="f-size">${['S','M','L','XL','XXL','XXXL'].map(s=>`<option ${emp?.size===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
@@ -2031,7 +2088,7 @@ function bindEmployeeModal(emp){
   syncTitleInput();
 
   document.getElementById('save-emp').onclick = ()=>{
-    const name=val('f-name'), num=val('f-num'), nid=val('f-nid'), branch=val('f-branch'), size=val('f-size');
+    const name=val('f-name'), num=val('f-num'), nid=val('f-nid'), branch=val('f-branch'), size=val('f-size'), phone=val('f-phone');
     if(!name||!num||!nid){ toast(t('require_name_num_id'),'err'); return; }
     if(!emp && STATE.employees.some(e=>e.employeeNumber===num)){ toast(t('employee_number_taken'),'err'); return; }
 
@@ -2054,7 +2111,7 @@ function bindEmployeeModal(emp){
     const nextDueEl = document.getElementById('f-next-due');
     if(emp){
       const oldLast = emp.lastIssueDate, oldNext = emp.nextDueDate;
-      Object.assign(emp, {name, employeeNumber:num, nationalId:nid, branch, jobTitle:title, size});
+      Object.assign(emp, {name, employeeNumber:num, nationalId:nid, branch, jobTitle:title, size, phone});
       if(isAdmin && lastIssueEl && nextDueEl){
         const newLast = lastIssueEl.value || null;
         const newNext = nextDueEl.value || null;
@@ -2067,7 +2124,7 @@ function bindEmployeeModal(emp){
       addAudit('تعديل بيانات موظف', name);
       toast(t('employee_updated'));
     } else {
-      STATE.employees.push({id:uid('e'), name, employeeNumber:num, nationalId:nid, branch, jobTitle:title, size, lastIssueDate:null, nextDueDate:null, uniformType:'ثوب'});
+      STATE.employees.push({id:uid('e'), name, employeeNumber:num, nationalId:nid, branch, jobTitle:title, size, phone, lastIssueDate:null, nextDueDate:null, uniformType:'ثوب'});
       addAudit('إضافة موظف جديد', name);
       toast(t('employee_added'));
     }
@@ -2109,6 +2166,7 @@ function orderModal(m){
           <input id="o-price" value="${STATE.settings.price} ${t('currency')}" disabled style="font-weight:800;">
           <div class="helper">${t('unit_price_hint', STATE.settings.price, t('currency'))}</div>
         </div>
+        <div class="field"><label>${t('order_note_label')}</label><textarea id="o-note" rows="2" placeholder="${t('order_note_ph')}" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;"></textarea></div>
         <div id="o-eligibility"></div>
         <div class="field" style="margin-top:6px;">
           <label>${t('order_image_label')}</label>
@@ -2226,7 +2284,7 @@ function bindOrderModal(){
       employeeId: emp.id, employeeName: emp.name, employeeNumber: emp.employeeNumber, branch: emp.branch, size: emp.size,
       uniformType:'ثوب', quantity: qty, price: qty * Number(STATE.settings.price||0), status: STATUS.NEW,
       createdDate: todayISO(), receivedDate:null, measuredDate:null, progressDate:null, completedDate:null, deliveredDate:null,
-      requestedBy: STATE.currentUser.name, exceptionReason, image: pendingImage || null
+      requestedBy: STATE.currentUser.name, exceptionReason, image: pendingImage || null, note: (document.getElementById('o-note').value||'').trim()
     };
     STATE.orders.push(order);
     persist('orders');
@@ -2268,6 +2326,7 @@ function orderEditModal(o){
             <select id="oe-status">${Object.values(STATUS).map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}</select>
           </div>
         </div>
+        <div class="field" style="margin-top:12px;"><label>${t('order_note_label')}</label><textarea id="oe-note" rows="2" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;">${esc(o.note||'')}</textarea></div>
         <div class="helper">${t('unit_price_hint', STATE.settings.price, t('currency'))} — ${t('order_edit_helper')}</div>
       </div>
       <div class="modal-foot">
@@ -2302,7 +2361,7 @@ function bindOrderEditModal(o){
     if(!price || price<=0){ toast(t('require_positive_price'),'err'); return; }
     const oldStatus = o.status;
     const oldPrice = Number(o.price||0);
-    Object.assign(o, {uniformType:type, quantity, size, price, status});
+    Object.assign(o, {uniformType:type, quantity, size, price, status, note:(document.getElementById('oe-note').value||'').trim()});
     const priceDiff = price - oldPrice;
     if(priceDiff!==0){
       STATE.settings.tailorBalance = Math.max(0, Number(STATE.settings.tailorBalance||0) + priceDiff);
@@ -2369,6 +2428,7 @@ function orderDetailModal(o){
           <div class="info-line"><span>${t('quantity_label')}</span><span>${o.quantity||1}</span></div>
           <div class="info-line"><span>${t('price')}</span><span>${o.price} ${t('currency')}</span></div>
         </div>
+        ${o.note? `<div class="alert alert-amber" style="white-space:pre-wrap;">📝 ${esc(o.note)}</div>`:''}
         ${o.exceptionReason? `<div class="alert alert-amber">${t('exception_alert', o.exceptionReason)}</div>`:''}
         ${o.image? `
         <div style="margin-bottom:16px;">
@@ -2388,6 +2448,7 @@ function orderDetailModal(o){
       </div>
       <div class="modal-foot" style="flex-wrap:wrap;">
         ${tailorActions}${hrActions}
+        ${([STATUS.DONE,STATUS.DELIVERED].includes(o.status) && hasHRAccess(role)) ? `<button class="btn btn-ghost btn-sm" id="wa-notify">${t('whatsapp_notify')}</button>` : ''}
         ${(o.status===STATUS.DELIVERED && hasHRAccess(role)) ? `<button class="btn btn-ghost btn-sm" id="print-receipt">${t('print_receipt')}</button>` : ''}
         <button class="btn btn-ghost" id="close-order-detail" style="margin-inline-start:auto;">${t('close')}</button>
       </div>
@@ -2431,6 +2492,7 @@ function bindOrderDetailModal(o){
       closeModal();
     };
   });
+  const waBtn = document.getElementById('wa-notify'); if(waBtn) waBtn.onclick = ()=> whatsappEmployee(o);
   const prBtn = document.getElementById('print-receipt'); if(prBtn) prBtn.onclick = ()=> printReceipt(o);
   document.getElementById('close-order-detail').onclick = closeModal;
 }
@@ -2513,6 +2575,7 @@ function bindModal(){
   document.getElementById('app').innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#8B97A3;">جارِ الاتصال بقاعدة البيانات...</div>`;
   await attachRealtimeListeners();
   bindPullToRefresh();
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
   const rid = getRememberedId();
   if(rid){
     const ru = STATE.users.find(x=>x.id===rid);
