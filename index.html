@@ -1579,6 +1579,7 @@ function employeesView(){
               <td>${fmtDate(e.lastIssueDate)}</td><td>${fmtDate(e.nextDueDate)}</td>
               <td>${elig.eligible? `<span class="badge badge-eligible">${t('eligible')}</span>` : `<span class="badge badge-not-eligible">${t('days_left', elig.daysLeft)}</span>`}</td>
               <td>
+                ${canManage ? `<button class="icon-btn" data-wa-emp="${e.id}" title="WhatsApp" style="color:#25D366;">💬</button>` : ''}
                 ${canManage ? `<button class="icon-btn" data-edit-emp="${e.id}" title="${t('edit')}">✎</button>` : ''}
                 ${canManage && elig.eligible ? `<button class="icon-btn" data-new-order="${e.id}" title="${t('new_order')}">+</button>` : ''}
                 ${canDelete ? `<button class="icon-btn" data-del-emp="${e.id}" title="${t('delete')}">🗑</button>` : ''}
@@ -1599,6 +1600,11 @@ function bindEmployees(){
   if(sEl){ sEl.oninput = upd; bEl.onchange=upd; tEl.onchange=upd; stEl.onchange=upd; }
   const addBtn = document.getElementById('add-emp-btn');
   if(addBtn) addBtn.onclick = ()=> openEmployeeModal(null);
+  document.querySelectorAll('[data-wa-emp]').forEach(el=> el.onclick = ()=>{
+    const e = STATE.employees.find(x=>x.id===el.dataset.waEmp); const ph = e && normalizePhone(e.phone);
+    if(!ph){ toast(t('phone_missing'),'err'); return; }
+    window.open('https://wa.me/'+ph, '_blank');
+  });
   document.querySelectorAll('[data-edit-emp]').forEach(el=> el.onclick = ()=> openEmployeeModal(el.dataset.editEmp));
   document.querySelectorAll('[data-new-order]').forEach(el=> el.onclick = ()=> openOrderModal(el.dataset.newOrder));
   document.querySelectorAll('[data-emp-detail]').forEach(el=> el.onclick = (ev)=>{ ev.preventDefault(); STATE.detailId = el.dataset.empDetail; STATE.view='employeeDetail'; render(); });
@@ -2448,7 +2454,7 @@ function orderDetailModal(o){
       </div>
       <div class="modal-foot" style="flex-wrap:wrap;">
         ${tailorActions}${hrActions}
-        ${([STATUS.DONE,STATUS.DELIVERED].includes(o.status) && hasHRAccess(role)) ? `<button class="btn btn-ghost btn-sm" id="wa-notify">${t('whatsapp_notify')}</button>` : ''}
+        ${(hasHRAccess(role)) ? `<button class="btn btn-ghost btn-sm" id="wa-notify">${t('whatsapp_notify')}</button>` : ''}
         ${(o.status===STATUS.DELIVERED && hasHRAccess(role)) ? `<button class="btn btn-ghost btn-sm" id="print-receipt">${t('print_receipt')}</button>` : ''}
         <button class="btn btn-ghost" id="close-order-detail" style="margin-inline-start:auto;">${t('close')}</button>
       </div>
