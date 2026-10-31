@@ -592,7 +592,13 @@ const I18N = {
     admin_eligibility_section:'تعديل استحقاق اليونيفورم (صلاحية المدير)', last_issue_date_field:'تاريخ آخر صرف', next_due_date_field:'تاريخ الاستحقاق القادم',
     admin_eligibility_helper:'تعديل هذين التاريخين يغيّر مباشرة موعد استحقاق الموظف لصرف يونيفورم جديد. اترك الحقلين فارغين لجعل الموظف مستحقاً فوراً.',
     modal_new_order:'طلب يونيفورم جديد', select_employee:'اختر الموظف', select_placeholder:'— اختر —',
-    developed_by:'تم التطوير بواسطة رمضان عزان', quantity_label:'العدد', unit_price_hint:(p,c)=>`سعر الوحدة: ${p} ${c}`,
+    developed_by:'تم التطوير بواسطة رمضان عزان', 
+    export_excel:'تصدير Excel', export_pdf:'تصدير PDF', date_from:'من تاريخ', date_to:'إلى تاريخ', clear_filters:'مسح الفلاتر',
+    stat_due_soon:'قريب الاستحقاق', due_soon_filter:'قريب الاستحقاق (30 يوم)', due_soon_alert:(n,d)=>`${n} موظف يقترب موعد استحقاقهم لليونيفورم خلال ${d} يومًا`,
+    stock_title:'مخزون المقاسات', stock_helper:'يُخصم العدد من مخزون المقاس تلقائيًا عند تسجيل التسليم، ويظهر تنبيه عندما يصل المقاس إلى 5 قطع أو أقل.', stock_save:'حفظ المخزون', stock_saved:'تم حفظ المخزون', stock_low_alert:(x)=>`مخزون منخفض في المقاسات: ${x}`, stock_pieces:'قطعة',
+    print_receipt:'🖨 طباعة إيصال الاستلام', receipt_title:'إيصال استلام يونيفورم', receipt_delivery_date:'تاريخ التسليم', receipt_ack:'أقرّ أنا الموظف الموقّع أدناه باستلام اليونيفورم المذكور أعلاه بحالة سليمة.', receipt_emp_sig:'توقيع الموظف', receipt_hr_sig:'توقيع المسؤول',
+    nav_tailor_log:'سجل حسابات الخياط', tailor_log_title:'سجل تصفيات حساب الخياط', col_amount:'المبلغ', tailor_log_empty:'لا توجد تصفيات مسجلة بعد', tailor_log_total:'إجمالي التصفيات',
+quantity_label:'العدد', unit_price_hint:(p,c)=>`سعر الوحدة: ${p} ${c}`,
     order_image_label:'صورة مرفقة (اختياري)', order_image_hint:'يمكنك التقاط صورة بالكاميرا أو اختيار صورة من المعرض',
     remove_image:'إزالة الصورة', view_image:'عرض الصورة', image_too_large:'تعذّر معالجة هذه الصورة، الرجاء تجربة صورة أخرى',
     attached_image_section:'الصورة المرفقة', no_image_attached:'لا توجد صورة مرفقة لهذا الطلب',
@@ -674,7 +680,13 @@ const I18N = {
     admin_eligibility_section:'Edit Uniform Eligibility (Admin Only)', last_issue_date_field:'Last Issue Date', next_due_date_field:'Next Eligibility Date',
     admin_eligibility_helper:'Editing these dates directly changes when this employee is next eligible for a new uniform. Leave both fields empty to make the employee eligible immediately.',
     modal_new_order:'New Uniform Order', select_employee:'Select Employee', select_placeholder:'— Select —',
-    developed_by:'Developed by Ramadan Azzan', quantity_label:'Quantity', unit_price_hint:(p,c)=>`Unit price: ${p} ${c}`,
+    developed_by:'Developed by Ramadan Azzan', 
+    export_excel:'Export Excel', export_pdf:'Export PDF', date_from:'From', date_to:'To', clear_filters:'Clear filters',
+    stat_due_soon:'Due soon', due_soon_filter:'Due soon (30 days)', due_soon_alert:(n,d)=>`${n} employee(s) become eligible for a uniform within ${d} days`,
+    stock_title:'Size Stock', stock_helper:'Stock is deducted automatically when a delivery is registered, and an alert shows when a size reaches 5 pieces or fewer.', stock_save:'Save Stock', stock_saved:'Stock saved', stock_low_alert:(x)=>`Low stock in sizes: ${x}`, stock_pieces:'pcs',
+    print_receipt:'🖨 Print Receipt', receipt_title:'Uniform Delivery Receipt', receipt_delivery_date:'Delivery date', receipt_ack:'I, the undersigned employee, confirm receiving the uniform above in good condition.', receipt_emp_sig:'Employee signature', receipt_hr_sig:'Officer signature',
+    nav_tailor_log:'Tailor Account Log', tailor_log_title:'Tailor Settlement Log', col_amount:'Amount', tailor_log_empty:'No settlements recorded yet', tailor_log_total:'Total settled',
+quantity_label:'Quantity', unit_price_hint:(p,c)=>`Unit price: ${p} ${c}`,
     order_image_label:'Attached Photo (optional)', order_image_hint:'You can take a photo with the camera or choose one from your gallery',
     remove_image:'Remove Photo', view_image:'View Photo', image_too_large:'Could not process this image, please try another one',
     attached_image_section:'Attached Photo', no_image_attached:'No photo attached to this order',
@@ -849,6 +861,91 @@ function toast(msg, type){
 /* =========================================================
    ELIGIBILITY
 ========================================================= */
+const SIZES = ['S','M','L','XL','XXL','XXXL'];
+const DUE_SOON_DAYS = 30, LOW_STOCK = 5;
+function esc(v){ return String(v==null?'':v).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function dueSoonEmployees(){
+  return STATE.employees.filter(e=>{ if(!e.nextDueDate) return false; const d = daysBetween(e.nextDueDate, todayISO()); return d>0 && d<=DUE_SOON_DAYS; });
+}
+function lowStockSizes(){
+  const st = STATE.settings.stock; if(!st) return [];
+  return SIZES.filter(z=> st[z]!==undefined && Number(st[z])<=LOW_STOCK);
+}
+function checkDueSoon(){
+  if(!STATE.currentUser || !hasHRAccess(STATE.currentUser.role)) return;
+  const today = todayISO();
+  if(STATE.settings.lastDueCheck===today) return;
+  const list = dueSoonEmployees(), low = lowStockSizes();
+  STATE.settings.lastDueCheck = today; persist('settings');
+  if(list.length) addNotification(`تنبيه: ${list.length} موظف يقترب موعد استحقاقهم لليونيفورم خلال ${DUE_SOON_DAYS} يومًا: ${list.slice(0,5).map(e=>e.name).join('، ')}${list.length>5?' ...':''}`);
+  if(low.length) addNotification(`تنبيه: مخزون منخفض في المقاسات: ${low.join('، ')}`);
+}
+function exportCSV(filename, headers, rows){
+  const q = v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const csv = '﻿' + [headers, ...rows].map(r=>r.map(q).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 800);
+}
+function printHTML(title, body){
+  const f = document.createElement('iframe');
+  f.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+  document.body.appendChild(f);
+  const d = f.contentWindow.document; d.open();
+  d.write(`<!doctype html><html dir="${STATE.lang==='en'?'ltr':'rtl'}"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+    body{font-family:Tahoma,Arial,sans-serif;padding:24px;color:#111} h1{font-size:20px;margin:0 0 4px} .meta{color:#555;font-size:12px}
+    table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px} th,td{border:1px solid #999;padding:6px 8px;text-align:start} th{background:#eee}
+    .row{display:flex;justify-content:space-between;border-bottom:1px dashed #bbb;padding:8px 0;font-size:14px} .ack{margin-top:22px;font-size:13px}
+    .sig{display:flex;justify-content:space-between;margin-top:70px} .sig div{width:40%;border-top:1px solid #000;padding-top:6px;text-align:center;font-size:13px}
+  </style></head><body>${body}</body></html>`);
+  d.close();
+  setTimeout(()=>{ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){} setTimeout(()=>f.remove(), 2000); }, 300);
+}
+function printTable(title, headers, rows){
+  printHTML(title, `<h1>${esc(title)}</h1><div class="meta">${esc(new Date().toLocaleDateString(STATE.lang==='en'?'en-GB':'ar-SA'))}</div>
+    <table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+}
+function exportData(kind, fmt){
+  let name, title, headers, rows;
+  if(kind==='employees'){
+    title = t('nav_employees'); name = 'employees';
+    headers = [t('col_employee'),t('col_employee_number'),t('col_national_id'),t('col_branch'),t('col_job_title'),t('col_size'),t('col_last_issue'),t('col_next_due')];
+    rows = (STATE._empList||[]).map(e=>[e.name,e.employeeNumber,e.nationalId,e.branch,e.jobTitle,e.size,e.lastIssueDate||'',e.nextDueDate||'']);
+  } else if(kind==='orders'){
+    title = t('nav_orders'); name = 'orders';
+    headers = [t('col_order_no'),t('col_employee'),t('col_employee_number'),t('col_branch'),t('col_size'),t('quantity_label'),t('col_order_date'),t('col_status'),t('price')];
+    rows = (STATE._ordList||[]).map(o=>[o.code,o.employeeName,o.employeeNumber,o.branch,o.size,o.quantity||1,(o.createdDate||'').slice(0,10),statusLabel(o.status),o.price]);
+  } else {
+    title = t('tailor_log_title'); name = 'tailor-log';
+    headers = ['#',t('col_time'),t('col_amount'),t('col_by')];
+    rows = [...(STATE.settings.tailorLog||[])].reverse().map((l,i)=>[i+1,new Date(l.at).toLocaleString('en-GB'),l.amount,l.by]);
+  }
+  if(!rows.length){ toast(t('no_orders'),'err'); return; }
+  if(fmt==='xls') exportCSV(`${name}-${todayISO()}.csv`, headers, rows);
+  else printTable(title, headers, rows);
+}
+function printReceipt(o){
+  const lines = [[t('col_order_no'),'#'+o.code],[t('col_employee'),o.employeeName],[t('col_employee_number'),o.employeeNumber],[t('col_branch'),o.branch],
+    [t('size'),o.size],[t('quantity_label'),o.quantity||1],[t('price'),`${o.price} ${t('currency')}`],[t('receipt_delivery_date'),fmtDate(o.deliveredDate)]];
+  printHTML(t('receipt_title'), `<h1>${esc(t('receipt_title'))}</h1><div class="meta">Momo Cafe — لحظة كيف</div><div style="margin-top:14px">
+    ${lines.map(l=>`<div class="row"><span>${esc(l[0])}</span><b>${esc(l[1])}</b></div>`).join('')}</div>
+    <div class="ack">${esc(t('receipt_ack'))}</div>
+    <div class="sig"><div>${esc(t('receipt_emp_sig'))}</div><div>${esc(t('receipt_hr_sig'))}</div></div>`);
+}
+function renderKeepFocus(id){
+  const a = document.activeElement, pos = a && a.selectionStart;
+  render();
+  const el = document.getElementById(id);
+  if(el){ el.focus(); try{ el.setSelectionRange(pos,pos); }catch(e){} }
+}
+function exportBtns(kind){
+  return `<button class="btn btn-ghost btn-sm" data-export="${kind}:xls">📊 ${t('export_excel')}</button><button class="btn btn-ghost btn-sm" data-export="${kind}:pdf">📄 ${t('export_pdf')}</button>`;
+}
+function bindExports(){
+  document.querySelectorAll('[data-export]').forEach(b=> b.onclick = ()=>{ const [k,f]=b.dataset.export.split(':'); exportData(k,f); });
+}
+
 function employeeEligibility(emp){
   if(!emp.nextDueDate) return {eligible:true, daysLeft:0};
   const days = daysBetween(emp.nextDueDate, todayISO());
@@ -944,6 +1041,7 @@ function doLogin(){
   STATE.currentUser = user;
   STATE.view = 'dashboard';
   addAudit('تسجيل دخول', user.name);
+  checkDueSoon();
   render();
 }
 function logout(){
@@ -1031,13 +1129,14 @@ function navItems(role){
   if(role==='admin'){
     base.push({v:'users', ic:'🛠', l:t('nav_users')});
     base.push({v:'settings', ic:'⚙', l:t('nav_settings')});
+    base.push({v:'tailorlog', ic:'🧵', l:t('nav_tailor_log')});
     base.push({v:'audit', ic:'🗂', l:t('nav_audit')});
   }
   return base;
 }
 function viewTitle(v){
   return {dashboard:t('nav_dashboard'), employees:t('nav_employees'), orders:t('nav_orders'), notifications:t('nav_notifications'),
-    users:t('title_users'), settings:t('settings_title'), audit:t('nav_audit'), employeeDetail:t('nav_employeeDetail')}[v] || '';
+    users:t('title_users'), settings:t('settings_title'), audit:t('nav_audit'), tailorlog:t('nav_tailor_log'), employeeDetail:t('nav_employeeDetail')}[v] || '';
 }
 function initials(name){ return (name||'').trim().split(' ').slice(0,2).map(w=>w[0]).join(''); }
 
@@ -1210,6 +1309,7 @@ function viewContent(){
     case 'users': return usersView();
     case 'settings': return settingsView();
     case 'audit': return auditView();
+    case 'tailorlog': return tailorLogView();
     case 'employeeDetail': return employeeDetailView();
     default: return '';
   }
@@ -1223,6 +1323,7 @@ function bindViewHandlers(){
     case 'users': bindUsers(); break;
     case 'settings': bindSettings(); break;
     case 'employeeDetail': bindEmployeeDetail(); break;
+    case 'tailorlog': bindExports(); break;
   }
 }
 
@@ -1248,10 +1349,14 @@ function dashboardView(){
     {l:t('stat_delivered'), v: delivered, c:'green', action:'orders-delivered'},
     {l:t('stat_eligible'), v: eligible, c:'green', action:'employees-eligible'},
     {l:t('stat_not_eligible'), v: notEligible, c:'red', action:'employees-noteligible'},
+    {l:t('stat_due_soon'), v: dueSoonEmployees().length, c:'amber', action:'employees-soon'},
     {l:t('stat_total_cost'), v: totalCost.toLocaleString(STATE.lang==='en'?'en':'ar')+' '+t('currency'), c:'gold', action:'orders-delivered'},
   ];
   const recent = [...orders].sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate)).slice(0,6);
+  const soonN = dueSoonEmployees().length, lowS = lowStockSizes();
+  const alerts = canDrill ? `${soonN? `<div class="alert alert-amber" data-stat-action="employees-soon" style="cursor:pointer;">⏰ ${t('due_soon_alert', soonN, DUE_SOON_DAYS)}</div>`:''}${lowS.length? `<div class="alert alert-red">📦 ${t('stock_low_alert', lowS.join('، '))}</div>`:''}` : '';
   return `
+    ${alerts}
     <div class="stat-grid">
       ${cards.map(c=>{
         const clickable = canDrill && c.action;
@@ -1291,6 +1396,7 @@ function handleStatCardClick(action){
     case 'employees-all': return goToEmployeesFiltered('');
     case 'employees-eligible': return goToEmployeesFiltered('eligible');
     case 'employees-noteligible': return goToEmployeesFiltered('not');
+    case 'employees-soon': return goToEmployeesFiltered('soon');
     case 'orders-new': return goToOrdersFiltered(STATUS.NEW);
     case 'orders-inprogress': return goToOrdersFiltered(INPROGRESS_FILTER);
     case 'orders-done': return goToOrdersFiltered(STATUS.DONE);
@@ -1348,6 +1454,7 @@ function bindDashboard(){
     if(current<=0){ toast(t('tailor_no_balance'),'err'); return; }
     if(confirm(t('tailor_settle_confirm', current.toLocaleString(STATE.lang==='en'?'en':'ar')))){
       STATE.settings.tailorBalance = 0;
+      STATE.settings.tailorLog = [...(STATE.settings.tailorLog||[]), {id:uid('t'), amount:current, at:new Date().toISOString(), by:STATE.currentUser.name}];
       persist('settings');
       addAudit('تصفية حساب الخياط', `تمت تصفية مبلغ ${current.toLocaleString('ar')} ريال بالكامل`);
       toast(t('tailor_settle_success'));
@@ -1371,13 +1478,15 @@ function employeesView(){
   const q = STATE.empFilters || {search:'', branch:'', status:'', title:''};
   let list = STATE.employees.filter(e=>{
     const s = q.search.trim();
-    const matchSearch = !s || e.name.includes(s) || e.employeeNumber.includes(s) || e.nationalId.includes(s);
+    const matchSearch = !s || e.name.includes(s) || e.employeeNumber.includes(s) || e.nationalId.includes(s) || (e.branch||'').includes(s) || (e.jobTitle||'').includes(s);
     const matchBranch = !q.branch || e.branch===q.branch;
     const matchTitle = !q.title || e.jobTitle===q.title;
     const elig = employeeEligibility(e);
-    const matchStatus = !q.status || (q.status==='eligible' ? elig.eligible : !elig.eligible);
+    const soon = !elig.eligible && elig.daysLeft<=DUE_SOON_DAYS;
+    const matchStatus = !q.status || (q.status==='eligible' ? elig.eligible : q.status==='soon' ? soon : !elig.eligible);
     return matchSearch && matchBranch && matchTitle && matchStatus;
   });
+  STATE._empList = list;
   const titles = [...new Set(STATE.employees.map(e=>e.jobTitle).filter(Boolean))];
 
   return `
@@ -1391,9 +1500,10 @@ function employeesView(){
             <option value="">${t('all_eligibility')}</option>
             <option value="eligible" ${q.status==='eligible'?'selected':''}>${t('eligible')}</option>
             <option value="not" ${q.status==='not'?'selected':''}>${t('not_eligible')}</option>
+            <option value="soon" ${q.status==='soon'?'selected':''}>${t('due_soon_filter')}</option>
           </select>
         </div>
-        ${canManage ? `<button class="btn btn-primary btn-sm" id="add-emp-btn">${t('add_employee')}</button>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">${exportBtns('employees')}${canManage ? `<button class="btn btn-primary btn-sm" id="add-emp-btn">${t('add_employee')}</button>` : ''}</div>
       </div>
       <div class="panel-body table-wrap">
         <table>
@@ -1422,7 +1532,8 @@ function employeesView(){
 function bindEmployees(){
   const sEl = document.getElementById('emp-search'), bEl = document.getElementById('emp-branch'),
         tEl = document.getElementById('emp-title'), stEl = document.getElementById('emp-status');
-  const upd = ()=>{ STATE.empFilters = {search:sEl.value, branch:bEl.value, title:tEl.value, status:stEl.value}; render(); };
+  const upd = ()=>{ STATE.empFilters = {search:sEl.value, branch:bEl.value, title:tEl.value, status:stEl.value}; renderKeepFocus(document.activeElement && document.activeElement.id); };
+  bindExports();
   if(sEl){ sEl.oninput = upd; bEl.onchange=upd; tEl.onchange=upd; stEl.onchange=upd; }
   const addBtn = document.getElementById('add-emp-btn');
   if(addBtn) addBtn.onclick = ()=> openEmployeeModal(null);
@@ -1521,8 +1632,12 @@ function ordersView(){
     const s = q.search.trim();
     const matchSearch = !s || o.employeeName.includes(s) || o.employeeNumber.includes(s) || o.code.includes(s);
     const matchStatus = !q.status || (q.status===INPROGRESS_FILTER ? [STATUS.RECEIVED, STATUS.MEASURED, STATUS.PROGRESS].includes(o.status) : o.status===q.status);
-    return matchSearch && matchStatus;
+    const matchBranch = !q.branch || o.branch===q.branch;
+    const cd = (o.createdDate||'').slice(0,10);
+    const matchFrom = !q.from || cd >= q.from, matchTo = !q.to || cd <= q.to;
+    return matchSearch && matchStatus && matchBranch && matchFrom && matchTo;
   }).sort((a,b)=> new Date(b.createdDate)-new Date(a.createdDate));
+  STATE._ordList = list;
 
   return `
     <div class="panel">
@@ -1534,8 +1649,12 @@ function ordersView(){
             <option value="${INPROGRESS_FILTER}" ${q.status===INPROGRESS_FILTER?'selected':''}>${t('inprogress_combined')}</option>
             ${Object.values(STATUS).map(s=>`<option value="${s}" ${q.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}
           </select>
+          <select id="ord-branch"><option value="">${t('all_branches')}</option>${STATE.branches.map(b=>`<option ${q.branch===b?'selected':''}>${b}</option>`).join('')}</select>
+          <input id="ord-from" type="date" title="${t('date_from')}" value="${q.from||''}">
+          <input id="ord-to" type="date" title="${t('date_to')}" value="${q.to||''}">
+          ${(q.search||q.status||q.branch||q.from||q.to)? `<button class="btn btn-ghost btn-sm" id="ord-clear">✕ ${t('clear_filters')}</button>`:''}
         </div>
-        ${canManage ? `<button class="btn btn-primary btn-sm" id="add-order-btn">${t('new_order_btn')}</button>`:''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">${exportBtns('orders')}${canManage ? `<button class="btn btn-primary btn-sm" id="add-order-btn">${t('new_order_btn')}</button>`:''}</div>
       </div>
       <div class="panel-body table-wrap">
         <table>
@@ -1558,8 +1677,11 @@ function ordersView(){
 }
 function bindOrders(){
   const sEl = document.getElementById('ord-search'), stEl = document.getElementById('ord-status');
-  const upd = ()=>{ STATE.orderFilters = {search:sEl.value, status:stEl.value}; render(); };
-  if(sEl){ sEl.oninput = upd; stEl.onchange = upd; }
+  const g = id=>document.getElementById(id);
+  const upd = ()=>{ STATE.orderFilters = {search:sEl.value, status:stEl.value, branch:g('ord-branch').value, from:g('ord-from').value, to:g('ord-to').value}; renderKeepFocus(document.activeElement && document.activeElement.id); };
+  bindExports();
+  if(sEl){ sEl.oninput = upd; stEl.onchange = upd; g('ord-branch').onchange = upd; g('ord-from').onchange = upd; g('ord-to').onchange = upd; }
+  const clr = g('ord-clear'); if(clr) clr.onclick = ()=>{ STATE.orderFilters = {search:'', status:''}; render(); };
   const addBtn = document.getElementById('add-order-btn');
   if(addBtn) addBtn.onclick = ()=> openOrderModal(null);
   document.querySelectorAll('[data-order-detail]').forEach(el=> el.onclick = (e)=>{ e.stopPropagation(); openOrderDetailModal(el.dataset.orderDetail); });
@@ -1674,6 +1796,16 @@ function settingsView(){
     </div>
   </div>
   <div class="panel">
+    <div class="panel-head"><h3>${t('stock_title')}</h3></div>
+    <div class="panel-body">
+      <div class="grid-2">
+        ${SIZES.map(z=>`<div class="field"><label>${z} (${t('stock_pieces')})</label><input id="stock-${z}" type="number" min="0" value="${(s.stock&&s.stock[z]!==undefined)?s.stock[z]:0}"></div>`).join('')}
+      </div>
+      <div class="helper" style="margin-bottom:12px;">${t('stock_helper')}</div>
+      <button class="btn btn-primary" id="save-stock">${t('stock_save')}</button>
+    </div>
+  </div>
+  <div class="panel">
     <div class="panel-head"><h3>${t('branches_title')}</h3></div>
     <div class="panel-body">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
@@ -1713,11 +1845,19 @@ function settingsView(){
   </div>`;
 }
 function bindSettings(){
+  document.getElementById('save-stock').onclick = ()=>{
+    const stock = {};
+    SIZES.forEach(z=>{ stock[z] = Math.max(0, parseInt(document.getElementById('stock-'+z).value,10) || 0); });
+    STATE.settings = {...STATE.settings, stock};
+    persist('settings');
+    addAudit('تعديل مخزون المقاسات', SIZES.map(z=>`${z}: ${stock[z]}`).join('، '));
+    toast(t('stock_saved')); render();
+  };
   document.getElementById('save-settings').onclick = ()=>{
     const price = Number(document.getElementById('set-price').value);
     const days = Number(document.getElementById('set-days').value);
     if(price<=0 || days<=0){ toast(t('settings_positive_error'),'err'); return; }
-    STATE.settings = {price, eligibilityDays: days};
+    STATE.settings = {...STATE.settings, price, eligibilityDays: days};
     persist('settings'); addAudit('تعديل الإعدادات', `السعر: ${price} ريال، مدة الاستحقاق: ${days} يوم`);
     toast(t('settings_saved')); render();
   };
@@ -1788,6 +1928,22 @@ function bindSettings(){
 /* =========================================================
    AUDIT LOG (admin)
 ========================================================= */
+function tailorLogView(){
+  const log = [...(STATE.settings.tailorLog||[])].reverse();
+  const total = log.reduce((a,l)=>a+Number(l.amount||0),0);
+  return `
+  <div class="panel">
+    <div class="panel-head"><h3>${t('tailor_log_title')}</h3><div style="display:flex;gap:8px;flex-wrap:wrap;">${exportBtns('tailor')}</div></div>
+    <div class="panel-body table-wrap">
+      <table><thead><tr><th>#</th><th>${t('col_time')}</th><th>${t('col_amount')}</th><th>${t('col_by')}</th></tr></thead>
+      <tbody>
+      ${log.length? log.map((l,i)=>`<tr><td>${log.length-i}</td><td>${new Date(l.at).toLocaleString(STATE.lang==='en'?'en-GB':'ar-SA-u-nu-latn')}</td><td><b>${Number(l.amount).toLocaleString(STATE.lang==='en'?'en':'ar')} ${t('currency')}</b></td><td>${esc(l.by)}</td></tr>`).join('')
+        + `<tr><td colspan="2"><b>${t('tailor_log_total')}</b></td><td colspan="2"><b>${total.toLocaleString(STATE.lang==='en'?'en':'ar')} ${t('currency')}</b></td></tr>`
+        : `<tr><td colspan="4" class="empty-row">${t('tailor_log_empty')}</td></tr>`}
+      </tbody></table>
+    </div>
+  </div>`;
+}
 function auditView(){
   return `
   <div class="panel">
@@ -2224,6 +2380,7 @@ function orderDetailModal(o){
       </div>
       <div class="modal-foot" style="flex-wrap:wrap;">
         ${tailorActions}${hrActions}
+        ${(o.status===STATUS.DELIVERED && hasHRAccess(role)) ? `<button class="btn btn-ghost btn-sm" id="print-receipt">${t('print_receipt')}</button>` : ''}
         <button class="btn btn-ghost" id="close-order-detail" style="margin-inline-start:auto;">${t('close')}</button>
       </div>
     </div>
@@ -2247,6 +2404,8 @@ function bindOrderDetailModal(o){
       }
       if(newStatus===STATUS.DELIVERED){
         o.deliveredDate = today;
+        const stk = STATE.settings.stock;
+        if(stk && stk[o.size]!==undefined){ stk[o.size] = Math.max(0, Number(stk[o.size]) - Number(o.quantity||1)); persist('settings'); }
         const emp = STATE.employees.find(e=>e.id===o.employeeId);
         if(emp){
           emp.lastIssueDate = today;
@@ -2264,6 +2423,7 @@ function bindOrderDetailModal(o){
       closeModal();
     };
   });
+  const prBtn = document.getElementById('print-receipt'); if(prBtn) prBtn.onclick = ()=> printReceipt(o);
   document.getElementById('close-order-detail').onclick = closeModal;
 }
 
