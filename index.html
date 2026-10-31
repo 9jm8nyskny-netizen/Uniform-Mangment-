@@ -547,7 +547,7 @@ const I18N = {
     nav_dashboard:'لوحة التحكم', nav_employees:'الموظفون', nav_orders:'الطلبات', nav_notifications:'الإشعارات',
     nav_users:'المستخدمون', nav_settings:'الإعدادات', nav_audit:'سجل العمليات', nav_employeeDetail:'سجل الموظف',
     title_settings:'إدارة المستخدمين', title_users:'إدارة المستخدمين',
-    login_welcome:'مرحبًا بعودتك', login_title:'تسجيل الدخول', login_sub:'أدخل بيانات حسابك للمتابعة إلى لوحة التحكم',
+    login_welcome:'مرحبًا بعودتك', hello_ramadan:'مرحبا رمضان 👋', login_title:'تسجيل الدخول', login_sub:'أدخل بيانات حسابك للمتابعة إلى لوحة التحكم',
     username:'اسم المستخدم', password:'كلمة المرور', login_btn:'دخول', login_err:'اسم المستخدم أو كلمة المرور غير صحيحة.',
     employee_portal_link:'الاستعلام عن حالة اليونيفورم كموظف', secure_note:'اتصال مشفّر عبر HTTPS',
     firebase_disconnected_login:'⚠ لا يوجد اتصال حالي بقاعدة بيانات Firebase — تحقق من الإنترنت أو إعدادات المشروع.',
@@ -629,7 +629,7 @@ const I18N = {
     nav_dashboard:'Dashboard', nav_employees:'Employees', nav_orders:'Orders', nav_notifications:'Notifications',
     nav_users:'Users', nav_settings:'Settings', nav_audit:'Audit Log', nav_employeeDetail:'Employee Record',
     title_settings:'User Management', title_users:'User Management',
-    login_welcome:'Welcome back', login_title:'Sign In', login_sub:'Enter your account details to continue to the dashboard',
+    login_welcome:'Welcome back', hello_ramadan:'Hello Ramadan 👋', login_title:'Sign In', login_sub:'Enter your account details to continue to the dashboard',
     username:'Username', password:'Password', login_btn:'Sign In', login_err:'Incorrect username or password.',
     employee_portal_link:'Check uniform status as an employee', secure_note:'Encrypted connection via HTTPS',
     firebase_disconnected_login:'⚠ No connection to the Firebase database — check your internet or project settings.',
@@ -889,6 +889,7 @@ function loginView(){
           <div class="brand-text"><b>${t('app_title')}</b><span>Momo Cafe — لحظة كيف</span></div>
         </div>
         <div class="eyebrow">${t('login_welcome')}</div>
+        <div style="font-size:20px;font-weight:700;color:var(--brand,#6b3f2a);margin-bottom:4px;">${t('hello_ramadan')}</div>
         <h2>${t('login_title')}</h2>
         <div class="sub">${t('login_sub')}</div>
         <div class="field">
